@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+*.log
+.vercel/
+tsconfig.tsbuildinfo
+
+# Credenciales locales: nunca versionar.
+CLAVE BD SUPABASE PD_MARCOS.txt
