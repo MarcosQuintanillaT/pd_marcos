@@ -19,8 +19,18 @@ const SECTION_ICONS = {
   "8": Paperclip,
 } as const;
 
+function cleanPublicLabel(value: string) {
+  if (!value.includes("\u00c3") && !value.includes("\u00c2")) return value;
+
+  try {
+    return new TextDecoder().decode(Uint8Array.from(value, (character) => character.charCodeAt(0)));
+  } catch {
+    return value;
+  }
+}
+
 export function Dashboard() {
-  const { configured, demoMode, role, perfil } = useAuth();
+  const { configured, demoMode, role } = useAuth();
   const [documents, setDocuments] = useState<Documento[]>(demoMode ? DEMO_DOCUMENTS : []);
   const [loading, setLoading] = useState(configured && !demoMode);
   const [error, setError] = useState("");
@@ -81,9 +91,18 @@ export function Dashboard() {
       : stats.reviewed + stats.approved > 0
         ? "En revisión"
         : "Pendiente";
-  const teacherName = process.env.NEXT_PUBLIC_DOCENTE_NOMBRE
-    || (role === "docente" ? perfil?.nombre : null)
-    || "Marcos";
+  const configuredTeacherName = cleanPublicLabel(
+    process.env.NEXT_PUBLIC_DOCENTE_NOMBRE || "",
+  ).trim();
+  const teacherName = configuredTeacherName.split(/\s+/).length >= 2
+    ? configuredTeacherName
+    : "Marcos Quintanilla";
+  const teacherArea = cleanPublicLabel(
+    process.env.NEXT_PUBLIC_DOCENTE_AREA || "Inform\u00e1tica",
+  );
+  const teacherShift = cleanPublicLabel(
+    process.env.NEXT_PUBLIC_DOCENTE_JORNADA || "Matutina",
+  );
   const firstPendingSection = PORTFOLIO_SECTIONS.find((section) => {
     const sectionDocuments = documents.filter((document) => document.seccion === sectionLabel(section));
     return sectionDocuments.length === 0
@@ -110,14 +129,14 @@ export function Dashboard() {
             <div className="mt-7 flex flex-wrap gap-2.5 text-xs">
               <span className="rounded-full bg-white/9 px-3.5 py-2">
                 <strong className="text-white">Área:</strong>{" "}
-                {process.env.NEXT_PUBLIC_DOCENTE_AREA || "Informática"}
+                {teacherArea}
               </span>
               <span className="rounded-full bg-white/9 px-3.5 py-2">
                 <strong className="text-white">Docente:</strong> {teacherName}
               </span>
               <span className="rounded-full bg-white/9 px-3.5 py-2">
                 <strong className="text-white">Jornada:</strong>{" "}
-                {process.env.NEXT_PUBLIC_DOCENTE_JORNADA || "Matutina"}
+                {teacherShift}
               </span>
             </div>
           </div>
