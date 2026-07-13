@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   }
 
   const indexRows = [
-    ["Sección", "Subsección", "Título", "Estado", "Parcial", "Fecha"].map(csvCell).join(","),
+    ["Sección", "Subsección", "Título", "Estado", "Período académico", "Fecha"].map(csvCell).join(","),
     ...documents.map((item) => [
       item.seccion,
       item.subseccion,

@@ -95,6 +95,20 @@ export async function POST(request: Request) {
       await removeUpload(auth, path);
       return privateJson({ error: "Documento no encontrado" }, { status: 404 });
     }
+    if (current.subseccion_codigo !== found.subsection.code) {
+      await removeUpload(auth, path);
+      return privateJson(
+        { error: "El documento no corresponde a la subsección seleccionada" },
+        { status: 409 },
+      );
+    }
+    if (current.parcial !== parcial) {
+      await removeUpload(auth, path);
+      return privateJson(
+        { error: "El período seleccionado no coincide con el documento que se reemplazará" },
+        { status: 409 },
+      );
+    }
     expectedFolder = current.archivo_url.split("/").slice(0, -1).join("/");
   }
   if (!path.startsWith(`${expectedFolder}/`)) {

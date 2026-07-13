@@ -133,7 +133,12 @@ const runId = `${Date.now()}-${randomUUID().slice(0, 6)}`;
 const teacherEmail = `visual-docente-${runId}@example.com`;
 const supervisorEmail = `visual-supervisor-${runId}@example.com`;
 const password = `Visual!${randomUUID()}Aa1`;
-const cleanup = { users: [], documentId: null, path: null };
+const cleanup = {
+  users: [],
+  portfolioId: null,
+  documentId: null,
+  path: null,
+};
 let proxy;
 
 try {
@@ -157,7 +162,22 @@ try {
   if (reviewer.error) throw reviewer.error;
   cleanup.users.push(reviewer.data.user.id);
 
-  cleanup.path = `04-filosofia-ensenanza/planes-de-clase/revision-movil_${randomUUID().replace(/-/g, "").slice(0, 6)}.pdf`;
+  const portfolio = await admin
+    .from("portafolios")
+    .insert({
+      docente_id: teacher.data.user.id,
+      anio_lectivo: 2026,
+      area: "InformÃ¡tica",
+      jornada: "Matutina",
+      institucion: "InstituciÃ³n Visual",
+      estado: "Activo",
+    })
+    .select("id")
+    .single();
+  if (portfolio.error) throw portfolio.error;
+  cleanup.portfolioId = portfolio.data.id;
+
+  cleanup.path = `04-filosofia-ensenanza/planes-de-clase/general-anual/revision-movil_${randomUUID().replace(/-/g, "").slice(0, 6)}.pdf`;
   const pdf = Buffer.from(
     "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF",
   );
@@ -169,6 +189,9 @@ try {
   const inserted = await admin
     .from("documentos")
     .insert({
+      portafolio_id: cleanup.portfolioId,
+      seccion_codigo: "4",
+      subseccion_codigo: "4.7",
       seccion: "4. Filosofía de Enseñanza",
       subseccion: "4.7. Planes de clase (ejecución diaria)",
       parcial: null,
@@ -176,11 +199,23 @@ try {
       archivo_url: cleanup.path,
       estado: "Pendiente",
       subido_por: teacher.data.user.id,
+      mime_type: "application/pdf",
+      tamano_bytes: pdf.length,
+      nombre_original: "revision-movil.pdf",
     })
-    .select("id")
+    .select("id,portafolio_id,seccion_codigo,subseccion_codigo,parcial,archivo_url")
     .single();
   if (inserted.error) throw inserted.error;
   cleanup.documentId = inserted.data.id;
+  if (
+    inserted.data.portafolio_id !== cleanup.portfolioId ||
+    inserted.data.seccion_codigo !== "4" ||
+    inserted.data.subseccion_codigo !== "4.7" ||
+    inserted.data.parcial !== null ||
+    inserted.data.archivo_url !== cleanup.path
+  ) {
+    throw new Error("El fixture General/Anual no conserva sus metadatos completos");
+  }
 
   const signedIn = await supervisor.auth.signInWithPassword({
     email: supervisorEmail,
@@ -281,6 +316,7 @@ try {
     supervisorReviewMobile:
       reviewDom.includes("Revisión móvil del supervisor") &&
       reviewDom.includes("Guardar revisión") &&
+      reviewDom.includes("General/Anual") &&
       reviewDom.includes("Descargar"),
     resetPasswordMobile:
       resetDom.includes("Crea una nueva contraseña") &&
@@ -303,6 +339,8 @@ try {
     await admin.from("documentos").delete().eq("id", cleanup.documentId);
   if (cleanup.path)
     await admin.storage.from("portafolio-documentos").remove([cleanup.path]);
+  if (cleanup.portfolioId)
+    await admin.from("portafolios").delete().eq("id", cleanup.portfolioId);
   for (const userId of cleanup.users.reverse()) {
     await admin.auth.admin.deleteUser(userId);
   }

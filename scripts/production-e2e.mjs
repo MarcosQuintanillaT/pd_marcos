@@ -46,7 +46,12 @@ const teacher = createClient(supabaseUrl, anonKey, clientOptions);
 const supervisor = createClient(supabaseUrl, anonKey, clientOptions);
 const recovery = createClient(supabaseUrl, anonKey, clientOptions);
 
-const cleanup = { userIds: [], documentId: null, storagePath: null };
+const cleanup = {
+  userIds: [],
+  portfolioId: null,
+  documentId: null,
+  storagePath: null,
+};
 const results = [];
 
 function check(condition, label) {
@@ -112,6 +117,21 @@ try {
   const teacherCookie = sessionCookie(teacherLogin.data.session);
   check(Boolean(teacherLogin.data.session), "login real de docente");
 
+  const portfolioCreated = await jsonResponse(
+    await fetch(`${appUrl}/api/portafolios`, {
+      method: "POST",
+      headers: { Cookie: teacherCookie, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anio_lectivo: 2026,
+        area: "InformÃ¡tica",
+        jornada: "Matutina",
+        institucion: "InstituciÃ³n E2E",
+      }),
+    }),
+  );
+  cleanup.portfolioId = portfolioCreated.portafolio.id;
+  check(Boolean(cleanup.portfolioId), "docente crea un portafolio activo temporal");
+
   const pdf = Buffer.from(
     "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF",
     "utf8",
@@ -119,6 +139,8 @@ try {
   const uploadForm = new FormData();
   uploadForm.set("titulo", "Estructura Portafolio Docente");
   uploadForm.set("subseccion", "4.7");
+  uploadForm.set("general", "true");
+  uploadForm.set("portafolio", cleanup.portfolioId);
   uploadForm.set("archivo", new Blob([pdf], { type: "application/pdf" }), "evidencia.pdf");
   const uploaded = await jsonResponse(
     await fetch(`${appUrl}/api/documentos`, {
@@ -130,15 +152,32 @@ try {
   cleanup.documentId = uploaded.documento.id;
   cleanup.storagePath = uploaded.documento.archivo_url;
   check(
-    /estructura-portafolio-docente_[a-f0-9]{6}\.pdf$/.test(cleanup.storagePath),
+    /^04-filosofia-ensenanza\/planes-de-clase\/general-anual\/estructura-portafolio-docente_[a-f0-9]{6}\.pdf$/.test(cleanup.storagePath),
     "nombre Storage usa slug del título e identificador corto",
   );
-  check(Boolean(uploaded.documento.signed_url), "visor recibe URL firmada");
-  check(Boolean(uploaded.documento.download_url), "descarga recibe URL firmada");
+  check(uploaded.documento.portafolio_id === cleanup.portfolioId, "documento conserva el portafolio temporal");
+  check(uploaded.documento.seccion_codigo === "4", "documento conserva el codigo de seccion");
+  check(uploaded.documento.subseccion_codigo === "4.7", "documento conserva el codigo de subseccion");
+  check(uploaded.documento.parcial === null, "General/Anual se persiste sin parcial");
 
-  const viewed = await fetch(uploaded.documento.signed_url);
+  const viewerAccess = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}/acceso`, {
+      headers: { Cookie: teacherCookie },
+      cache: "no-store",
+    }),
+  );
+  const downloadAccess = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}/acceso?descargar=true`, {
+      headers: { Cookie: teacherCookie },
+      cache: "no-store",
+    }),
+  );
+  check(Boolean(viewerAccess.url), "visor recibe URL firmada bajo demanda");
+  check(Boolean(downloadAccess.url), "descarga recibe URL firmada bajo demanda");
+
+  const viewed = await fetch(viewerAccess.url);
   check(viewed.ok, "URL firmada del visor descarga el PDF privado");
-  const downloaded = await fetch(uploaded.documento.download_url);
+  const downloaded = await fetch(downloadAccess.url);
   check(downloaded.ok, "URL firmada personalizada permite descargar");
   check(
     (downloaded.headers.get("content-disposition") || "").includes("estructura-portafolio-docente.pdf"),
@@ -154,7 +193,7 @@ try {
   check(Boolean(supervisorLogin.data.session), "login real de supervisor");
 
   const listed = await jsonResponse(
-    await fetch(`${appUrl}/api/documentos?subseccion=4.7`, {
+    await fetch(`${appUrl}/api/documentos?portafolio=${cleanup.portfolioId}&subseccion=4.7&periodo=general`, {
       headers: { Cookie: supervisorCookie },
       cache: "no-store",
     }),
@@ -186,7 +225,7 @@ try {
   check(Boolean(forbiddenFile.error), "trigger rechaza cambio directo de archivo por supervisor");
 
   const teacherView = await jsonResponse(
-    await fetch(`${appUrl}/api/documentos?subseccion=4.7`, {
+    await fetch(`${appUrl}/api/documentos?portafolio=${cleanup.portfolioId}&subseccion=4.7&periodo=general`, {
       headers: { Cookie: teacherCookie },
       cache: "no-store",
     }),
@@ -233,13 +272,20 @@ try {
   });
   check(!relogin.error && Boolean(relogin.data.session), "contraseña recuperada permite nuevo login");
 
-  const deleted = await jsonResponse(
+  const movedToTrash = await jsonResponse(
     await fetch(`${appUrl}/api/documentos/${cleanup.documentId}`, {
       method: "DELETE",
       headers: { Cookie: sessionCookie(relogin.data.session) },
     }),
   );
-  check(deleted.ok === true, "docente elimina documento y objeto privado");
+  check(movedToTrash.ok === true && movedToTrash.papelera === true, "docente mueve el documento a la papelera");
+  const purged = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}?permanente=true`, {
+      method: "DELETE",
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+    }),
+  );
+  check(purged.ok === true && purged.permanente === true, "docente elimina definitivamente el documento y su objeto privado");
   cleanup.documentId = null;
   cleanup.storagePath = null;
 
@@ -261,6 +307,9 @@ try {
   }
   if (cleanup.storagePath) {
     await admin.storage.from("portafolio-documentos").remove([cleanup.storagePath]);
+  }
+  if (cleanup.portfolioId) {
+    await admin.from("portafolios").delete().eq("id", cleanup.portfolioId);
   }
   for (const userId of cleanup.userIds.reverse()) {
     await admin.auth.admin.deleteUser(userId);

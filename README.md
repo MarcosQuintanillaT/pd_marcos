@@ -18,6 +18,8 @@ Gestor documental del portafolio oficial de un docente BTP, construido con Next.
 - Recuperación de contraseña y rutas privadas.
 - Diseño responsive y controles accesibles por teclado.
 
+En las subsecciones 4.5, 4.7 y 4.8, un documento con `parcial = null` se considera formalmente **General/Anual**. Los documentos históricos con ese valor se conservan y aparecen en esa categoría; no requieren migración ni cambio de archivo.
+
 ## Requisitos
 
 - Node.js 22 LTS, igual que `.nvmrc` y GitHub Actions.

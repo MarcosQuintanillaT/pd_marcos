@@ -73,12 +73,24 @@ export async function POST(request: Request) {
   if (body.reemplazar_id) {
     const current = await auth.supabase
       .from("documentos")
-      .select("id,archivo_url,portafolio_id")
+      .select("id,archivo_url,portafolio_id,subseccion_codigo,parcial")
       .eq("id", body.reemplazar_id)
       .is("eliminado_en", null)
       .single();
     if (current.error || current.data.portafolio_id !== portfolio.id) {
       return privateJson({ error: "Documento no encontrado" }, { status: 404 });
+    }
+    if (current.data.subseccion_codigo !== found.subsection.code) {
+      return privateJson(
+        { error: "El documento no corresponde a la subsección seleccionada" },
+        { status: 409 },
+      );
+    }
+    if (current.data.parcial !== parcial) {
+      return privateJson(
+        { error: "El período seleccionado no coincide con el documento que se reemplazará" },
+        { status: 409 },
+      );
     }
     folder = String(current.data.archivo_url).split("/").slice(0, -1).join("/");
   }
