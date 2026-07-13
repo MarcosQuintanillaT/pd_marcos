@@ -20,3 +20,4 @@ artifacts/production-smoke/*.png
 artifacts/production-smoke/*.html
 artifacts/production-smoke/*.json
 artifacts/production-smoke/*.tmp
+artifacts/trash-smoke/*

@@ -72,7 +72,8 @@ Abre `http://localhost:3000`.
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Pública | Requerida |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Pública, limitada por RLS | Requerida |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Solo servidor** | Opcional; mantenimiento y pruebas remotas |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Solo servidor** | Requerida por la purga automática |
+| `CRON_SECRET` | **Solo servidor** | Protege la ejecución diaria de Vercel Cron |
 | `NEXT_PUBLIC_DEMO_MODE` | Pública | Solo desarrollo; ausente o `false` en producción |
 | `NEXT_PUBLIC_DOCENTE_NOMBRE` | Pública | Respaldo opcional |
 | `NEXT_PUBLIC_DOCENTE_AREA` | Pública | Respaldo opcional |
@@ -88,6 +89,7 @@ app/
   api/documentos/[id]/acceso/     enlaces firmados bajo demanda
   api/documentos/[id]/historial/  revisiones y versiones
   api/documentos/resumen/         cobertura y revisión
+  api/papelera/purgar/            purga automática/manual de vencidos
   api/portafolios/                años lectivos
   api/exportar/                    respaldo ZIP del año
   api/health/                      comprobación básica
@@ -108,7 +110,9 @@ supabase/schema.sql                instalación completa
 - Formatos aceptados: PDF, HTML, PNG, JPG/JPEG, WebP, GIF, AVIF, BMP, TIFF, ICO, MP4 y WebM. SVG y ejecutables se rechazan.
 - Límite: 20 MB para documentos/imágenes y 50 MB para video.
 - HTML se muestra aislado y exige confirmación antes de descargar.
-- Eliminación normal mueve a papelera; el borrado físico solo ocurre al eliminar definitivamente.
+- Eliminación normal mueve a papelera y la excluye de vistas, búsquedas, exportaciones y estadísticas.
+- Solo el docente accede a la papelera; el supervisor tampoco puede consultar sus archivos, versiones o revisiones mediante RLS.
+- La purga física elimina primero Storage y después la fila, conserva errores reintentables y se ejecuta diariamente al cumplir 30 días.
 - Las respuestas privadas usan `Cache-Control: private, no-store`.
 - Se aplican CSP, HSTS en producción, anti-iframe, `nosniff`, política de referidos y permisos restringidos.
 - No existe registro público en la interfaz. Mantén **Allow new users to sign up** desactivado en Supabase.
@@ -116,7 +120,7 @@ supabase/schema.sql                instalación completa
 ## Despliegue en Vercel
 
 1. Sube los cambios a GitHub e importa el repositorio en Vercel.
-2. En **Settings > Environment Variables**, agrega las dos variables públicas de Supabase. Agrega la service role solo si una tarea de servidor realmente la necesita.
+2. En **Settings > Environment Variables**, agrega las variables públicas de Supabase, `SUPABASE_SERVICE_ROLE_KEY` y un `CRON_SECRET` aleatorio de al menos 16 caracteres. Las dos últimas son exclusivamente de servidor.
 3. No agregues `ALLOW_REMOTE_TESTS` ni credenciales de pruebas en Vercel.
 4. En Supabase configura:
    - Site URL: `https://pd-marcos.vercel.app`
@@ -124,7 +128,8 @@ supabase/schema.sql                instalación completa
    - Redirect URL: `https://pd-marcos.vercel.app/reset-password`
    - Desarrollo: `http://localhost:3000/reset-password`
 5. Confirma que el bucket sea privado y el registro público continúe desactivado.
-6. Despliega después de ejecutar `npm run quality`.
+6. Ejecuta `supabase/migrations/202607130002_soft_delete_retention.sql` en la base existente.
+7. Despliega después de ejecutar `npm run quality`. `vercel.json` programa la purga una vez al día a las 08:00 UTC; en Hobby puede ejecutarse dentro de esa hora.
 
 ## Flujo de uso
 
@@ -132,7 +137,7 @@ supabase/schema.sql                instalación completa
 - Al reemplazar un archivo, la versión anterior queda registrada en el historial.
 - El supervisor usa la búsqueda o la bandeja de pendientes, visualiza el archivo y guarda estado/comentario.
 - El dashboard identifica la siguiente subsección sin evidencia.
-- La papelera permite restaurar o eliminar definitivamente.
+- La papelera permite restaurar, eliminar definitivamente y conocer cuántos días faltan para la purga automática.
 - **Exportar ZIP** genera un respaldo del año seleccionado.
 
 ## Calidad y pruebas

@@ -19,11 +19,12 @@ export async function GET(request: Request, context: Context) {
   const download = url.searchParams.get("descargar") === "true";
   const version = Number.parseInt(url.searchParams.get("version") ?? "", 10);
 
-  const current = await auth.supabase
+  let currentQuery = auth.supabase
     .from("documentos")
     .select("id,titulo,archivo_url,eliminado_en")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+  if (auth.rol !== "docente") currentQuery = currentQuery.is("eliminado_en", null);
+  const current = await currentQuery.single();
   if (current.error || !current.data) {
     return privateJson({ error: "Documento no encontrado" }, { status: 404 });
   }

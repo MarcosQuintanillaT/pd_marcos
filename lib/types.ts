@@ -30,6 +30,8 @@ export interface Documento {
   actualizado_en?: string;
   eliminado_en?: string | null;
   eliminado_por?: string | null;
+  purga_iniciada_en?: string | null;
+  purga_error?: string | null;
   mime_type?: string | null;
   tamano_bytes?: number | null;
   nombre_original?: string | null;

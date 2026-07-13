@@ -37,8 +37,27 @@ type ConfirmRequest = {
   reemplazar_id?: string | null;
 };
 
-async function removeUpload(auth: Awaited<ReturnType<typeof getAuthContext>>, path: string) {
-  if (auth) await auth.supabase.storage.from(BUCKET_DOCUMENTOS).remove([path]);
+async function removeUnreferencedUpload(
+  auth: Awaited<ReturnType<typeof getAuthContext>>,
+  path: string,
+) {
+  if (!auth || !path) return;
+  const [document, version] = await Promise.all([
+    auth.supabase
+      .from("documentos")
+      .select("id")
+      .eq("archivo_url", path)
+      .limit(1)
+      .maybeSingle(),
+    auth.supabase
+      .from("documento_versiones")
+      .select("id")
+      .eq("archivo_url", path)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (document.error || version.error || document.data || version.data) return;
+  await auth.supabase.storage.from(BUCKET_DOCUMENTOS).remove([path]);
 }
 
 export async function POST(request: Request) {
@@ -55,7 +74,7 @@ export async function POST(request: Request) {
   const found = findByCode(String(body.subseccion ?? ""));
   const description = describePortfolioFile({ name: nombre, type: String(body.mime ?? "") } as File);
   if (!path || path.startsWith("/") || path.includes("..") || !titulo || !found || !description) {
-    if (path) await removeUpload(auth, path);
+    if (path) await removeUnreferencedUpload(auth, path);
     return privateJson({ error: "La confirmación de carga no es válida" }, { status: 400 });
   }
 
@@ -65,7 +84,7 @@ export async function POST(request: Request) {
     body.general === true,
   );
   if (period.error) {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return privateJson({ error: period.error }, { status: 400 });
   }
   const parcial = period.parcial;
@@ -73,7 +92,7 @@ export async function POST(request: Request) {
   const { portfolio, error: portfolioError } = await resolvePortfolio(auth, body.portafolio);
   if (portfolioError) return internalServerError(portfolioError, portfolioError.message);
   if (!portfolio || portfolio.estado !== "Activo") {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return privateJson({ error: "Portafolio no disponible" }, { status: 409 });
   }
 
@@ -92,18 +111,18 @@ export async function POST(request: Request) {
       .single();
     current = (currentResult.data as unknown as Documento | null) ?? null;
     if (currentResult.error || !current || current.portafolio_id !== portfolio.id) {
-      await removeUpload(auth, path);
+      await removeUnreferencedUpload(auth, path);
       return privateJson({ error: "Documento no encontrado" }, { status: 404 });
     }
     if (current.subseccion_codigo !== found.subsection.code) {
-      await removeUpload(auth, path);
+      await removeUnreferencedUpload(auth, path);
       return privateJson(
         { error: "El documento no corresponde a la subsección seleccionada" },
         { status: 409 },
       );
     }
     if (current.parcial !== parcial) {
-      await removeUpload(auth, path);
+      await removeUnreferencedUpload(auth, path);
       return privateJson(
         { error: "El período seleccionado no coincide con el documento que se reemplazará" },
         { status: 409 },
@@ -112,7 +131,7 @@ export async function POST(request: Request) {
     expectedFolder = current.archivo_url.split("/").slice(0, -1).join("/");
   }
   if (!path.startsWith(`${expectedFolder}/`)) {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return privateJson({ error: "Ruta de almacenamiento no válida" }, { status: 400 });
   }
 
@@ -124,7 +143,7 @@ export async function POST(request: Request) {
   const object = listed.data?.find((item) => item.name === filename);
   const size = Number(object?.metadata?.size ?? body.tamano ?? 0);
   if (listed.error || !object || size <= 0 || size > maximumFileBytes({ name: nombre, type: description.contentType } as File)) {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return privateJson({ error: "El archivo subido no existe o supera el límite permitido" }, { status: 400 });
   }
 
@@ -132,7 +151,7 @@ export async function POST(request: Request) {
     .from(BUCKET_DOCUMENTOS)
     .createSignedUrl(path, 60);
   if (access.error || !access.data?.signedUrl) {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return internalServerError(access.error, "No se pudo verificar el archivo");
   }
   const preview = await fetch(access.data.signedUrl, {
@@ -141,7 +160,7 @@ export async function POST(request: Request) {
   }).catch(() => null);
   const signatureBytes = preview?.ok ? new Uint8Array(await preview.arrayBuffer()) : null;
   if (!signatureBytes || !validateFileSignature(signatureBytes, description)) {
-    await removeUpload(auth, path);
+    await removeUnreferencedUpload(auth, path);
     return privateJson({ error: "El contenido no coincide con el formato declarado" }, { status: 400 });
   }
 
@@ -158,11 +177,15 @@ export async function POST(request: Request) {
         estado: "Pendiente",
       })
       .eq("id", current.id)
+      .eq("portafolio_id", portfolio.id)
+      .is("eliminado_en", null)
       .select(DOCUMENT_COLUMNS)
-      .single();
-    if (updated.error) {
-      await removeUpload(auth, path);
-      return internalServerError(updated.error, updated.error.message);
+      .maybeSingle();
+    if (updated.error || !updated.data) {
+      await removeUnreferencedUpload(auth, path);
+      return updated.error
+        ? internalServerError(updated.error, updated.error.message)
+        : privateJson({ error: "El documento ya no está activo" }, { status: 409 });
     }
     return privateJson({ documento: updated.data as unknown as Documento });
   }
@@ -187,7 +210,18 @@ export async function POST(request: Request) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (inserted.error) {
-    await removeUpload(auth, path);
+    if (inserted.error.code === "23505") {
+      const existing = await auth.supabase
+        .from("documentos")
+        .select(DOCUMENT_COLUMNS)
+        .eq("archivo_url", path)
+        .is("eliminado_en", null)
+        .maybeSingle();
+      if (existing.data) {
+        return privateJson({ documento: existing.data as unknown as Documento });
+      }
+    }
+    await removeUnreferencedUpload(auth, path);
     return internalServerError(inserted.error, inserted.error.message);
   }
   return privateJson({ documento: inserted.data as unknown as Documento }, { status: 201 });

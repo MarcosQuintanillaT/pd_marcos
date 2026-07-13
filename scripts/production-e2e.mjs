@@ -279,13 +279,99 @@ try {
     }),
   );
   check(movedToTrash.ok === true && movedToTrash.papelera === true, "docente mueve el documento a la papelera");
+
+  const trashForTeacher = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos?portafolio=${cleanup.portfolioId}&papelera=true`, {
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+      cache: "no-store",
+    }),
+  );
+  const trashedDocument = trashForTeacher.documentos.find(
+    (document) => document.id === cleanup.documentId,
+  );
+  check(Boolean(trashedDocument?.eliminado_en), "papelera conserva la fecha del soft-delete");
+
+  const trashForSupervisor = await fetch(
+    `${appUrl}/api/documentos?portafolio=${cleanup.portfolioId}&papelera=true`,
+    { headers: { Cookie: supervisorCookie }, cache: "no-store" },
+  );
+  check(trashForSupervisor.status === 403, "supervisor recibe 403 al intentar abrir la papelera");
+  const hiddenByRls = await supervisor
+    .from("documentos")
+    .select("id")
+    .eq("id", cleanup.documentId);
+  check(!hiddenByRls.error && hiddenByRls.data.length === 0, "RLS oculta al supervisor el documento eliminado");
+  const deletedFileAccess = await supervisor.storage
+    .from("portafolio-documentos")
+    .createSignedUrl(cleanup.storagePath, 60);
+  check(Boolean(deletedFileAccess.error), "Storage impide al supervisor firmar un archivo en papelera");
+  const reviewDeleted = await fetch(`${appUrl}/api/documentos/${cleanup.documentId}`, {
+    method: "PATCH",
+    headers: { Cookie: supervisorCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ estado: "Revisado", comentario_supervisor: "No permitido" }),
+  });
+  check(!reviewDeleted.ok, "supervisor no puede revisar un documento eliminado");
+
+  const activePurgeAttempt = await fetch(
+    `${appUrl}/api/documentos/${cleanup.documentId}?permanente=true`,
+    { method: "DELETE", headers: { Cookie: sessionCookie(relogin.data.session) } },
+  );
+  check(activePurgeAttempt.ok, "docente puede purgar el documento que está en papelera");
+
+  cleanup.documentId = null;
+  cleanup.storagePath = null;
+
+  const secondPdf = new FormData();
+  secondPdf.set("titulo", "Documento restaurable E2E");
+  secondPdf.set("subseccion", "4.7");
+  secondPdf.set("general", "true");
+  secondPdf.set("portafolio", cleanup.portfolioId);
+  secondPdf.set("archivo", new Blob([pdf], { type: "application/pdf" }), "restaurable.pdf");
+  const uploadedForRestore = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos`, {
+      method: "POST",
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+      body: secondPdf,
+    }),
+  );
+  cleanup.documentId = uploadedForRestore.documento.id;
+  cleanup.storagePath = uploadedForRestore.documento.archivo_url;
+
+  await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}`, {
+      method: "DELETE",
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+    }),
+  );
+  const restored = await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}/restaurar`, {
+      method: "POST",
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+    }),
+  );
+  check(restored.documento.eliminado_en === null, "docente restaura el documento desde la papelera");
+  const purgeActive = await fetch(
+    `${appUrl}/api/documentos/${cleanup.documentId}?permanente=true`,
+    { method: "DELETE", headers: { Cookie: sessionCookie(relogin.data.session) } },
+  );
+  check(purgeActive.status === 409, "un documento activo no se puede eliminar definitivamente");
+
+  await jsonResponse(
+    await fetch(`${appUrl}/api/documentos/${cleanup.documentId}`, {
+      method: "DELETE",
+      headers: { Cookie: sessionCookie(relogin.data.session) },
+    }),
+  );
   const purged = await jsonResponse(
     await fetch(`${appUrl}/api/documentos/${cleanup.documentId}?permanente=true`, {
       method: "DELETE",
       headers: { Cookie: sessionCookie(relogin.data.session) },
     }),
   );
-  check(purged.ok === true && purged.permanente === true, "docente elimina definitivamente el documento y su objeto privado");
+  check(
+    purged.ok === true && purged.permanente === true && purged.archivosEliminados >= 1,
+    "docente elimina definitivamente la fila, el archivo y sus versiones",
+  );
   cleanup.documentId = null;
   cleanup.storagePath = null;
 

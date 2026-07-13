@@ -20,6 +20,8 @@ export const DOCUMENT_COLUMNS = [
   "actualizado_en",
   "eliminado_en",
   "eliminado_por",
+  "purga_iniciada_en",
+  "purga_error",
   "mime_type",
   "tamano_bytes",
   "nombre_original",

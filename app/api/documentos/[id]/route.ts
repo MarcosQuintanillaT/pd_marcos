@@ -16,6 +16,7 @@ import {
   validatePortfolioFile,
 } from "@/lib/file-types";
 import { BUCKET_DOCUMENTOS } from "@/lib/portfolio";
+import { purgeTrashDocument } from "@/lib/trash-purge";
 import type { Documento, EstadoDocumento } from "@/lib/types";
 
 type Context = { params: Promise<{ id: string }> };
@@ -118,11 +119,14 @@ export async function PUT(request: Request, context: Context) {
       nombre_original: file.name.slice(0, 255),
     })
     .eq("id", id)
+    .is("eliminado_en", null)
     .select(DOCUMENT_COLUMNS)
-    .single();
-  if (updated.error) {
+    .maybeSingle();
+  if (updated.error || !updated.data) {
     await auth.supabase.storage.from(BUCKET_DOCUMENTOS).remove([path]);
-    return internalServerError(updated.error, updated.error.message);
+    return updated.error
+      ? internalServerError(updated.error, updated.error.message)
+      : privateJson({ error: "El documento ya no está activo" }, { status: 409 });
   }
   return privateJson({ documento: updated.data as unknown as Documento });
 }
@@ -151,23 +155,16 @@ export async function DELETE(request: Request, context: Context) {
     return privateJson({ ok: true, papelera: true });
   }
 
-  const current = await auth.supabase
-    .from("documentos")
-    .select("id,archivo_url")
-    .eq("id", id)
-    .not("eliminado_en", "is", null)
-    .single();
-  if (current.error || !current.data) {
-    return privateJson({ error: "El documento debe estar en la papelera" }, { status: 409 });
+  const purged = await purgeTrashDocument(auth.supabase, id);
+  if (!purged.ok) {
+    return privateJson(
+      { error: purged.error ?? "No se pudo eliminar definitivamente" },
+      { status: purged.error?.includes("activo") ? 409 : 502 },
+    );
   }
-  const versions = await auth.supabase
-    .from("documento_versiones")
-    .select("archivo_url")
-    .eq("documento_id", id);
-  const paths = [current.data.archivo_url, ...(versions.data ?? []).map((item) => item.archivo_url)];
-  const deleted = await auth.supabase.from("documentos").delete().eq("id", id);
-  if (deleted.error) return internalServerError(deleted.error, deleted.error.message);
-  const removed = await auth.supabase.storage.from(BUCKET_DOCUMENTOS).remove(paths);
-  if (removed.error) console.error("Storage cleanup pending", { documentId: id, paths, error: removed.error });
-  return privateJson({ ok: true, permanente: true, limpiezaPendiente: Boolean(removed.error) });
+  return privateJson({
+    ok: true,
+    permanente: true,
+    archivosEliminados: purged.filesRemoved,
+  });
 }

@@ -14,7 +14,9 @@ export async function GET(_request: Request, context: Context) {
   const auth = await getAuthContext();
   if (!auth) return unauthorized();
   const { id } = await context.params;
-  const exists = await auth.supabase.from("documentos").select("id").eq("id", id).single();
+  let existsQuery = auth.supabase.from("documentos").select("id").eq("id", id);
+  if (auth.rol !== "docente") existsQuery = existsQuery.is("eliminado_en", null);
+  const exists = await existsQuery.single();
   if (exists.error) return privateJson({ error: "Documento no encontrado" }, { status: 404 });
 
   const [reviews, versions] = await Promise.all([

@@ -22,6 +22,7 @@ export async function POST(_request: Request, context: Context) {
     .update({ eliminado_en: null, eliminado_por: null })
     .eq("id", id)
     .not("eliminado_en", "is", null)
+    .is("purga_iniciada_en", null)
     .select(DOCUMENT_COLUMNS)
     .single();
   if (result.error) {
