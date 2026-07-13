@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Download,
   FileCode2,
@@ -13,6 +14,24 @@ import {
 } from "lucide-react";
 import { AccessibleDialog } from "@/components/accessible-dialog";
 import { getFileKind } from "@/lib/file-types";
+
+const MobilePdfViewer = dynamic(
+  () =>
+    import("@/components/mobile-pdf-viewer").then(
+      (module) => module.MobilePdfViewer,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid h-full min-h-[70dvh] place-items-center text-[#526762]" role="status">
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />
+          Preparando visor móvil…
+        </span>
+      </div>
+    ),
+  },
+);
 
 type FileViewerProps = {
   open: boolean;
@@ -52,6 +71,17 @@ export function FileViewer({
     error: "",
   });
   const [imageErrorUrl, setImageErrorUrl] = useState<string | null>(null);
+  const [useCanvasPdf, setUseCanvasPdf] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia(
+      "(max-width: 1023px), (hover: none) and (pointer: coarse)",
+    );
+    const updateMode = () => setUseCanvasPdf(media.matches);
+    updateMode();
+    media.addEventListener("change", updateMode);
+    return () => media.removeEventListener("change", updateMode);
+  }, []);
 
   useEffect(() => {
     if (!open || kind !== "html" || !url || htmlPreview.url === url) return;
@@ -158,6 +188,15 @@ export function FileViewer({
       <div className="mx-auto min-h-0 w-full max-w-7xl flex-1 overflow-hidden rounded-b-2xl bg-[#e5e3dd]">
         {!url || previewError ? (
           fallback
+        ) : kind === "pdf" && useCanvasPdf === null ? (
+          <div className="grid h-full min-h-[70dvh] place-items-center text-[#526762]" role="status">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />
+              Preparando visor…
+            </span>
+          </div>
+        ) : kind === "pdf" && useCanvasPdf ? (
+          <MobilePdfViewer key={url} url={url} title={title} />
         ) : kind === "pdf" ? (
           <iframe
             src={`${url}#toolbar=1&navpanes=0&view=FitH`}
