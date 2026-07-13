@@ -28,8 +28,8 @@ export const PORTFOLIO_SECTIONS: Seccion[] = [
       { code: "2.2", title: "Título obtenido", slug: "02-titulo-obtenido", storagePath: "02-perfil-profesional/titulo-obtenido" },
       { code: "2.3", title: "Análisis FODA personal", slug: "03-analisis-foda-personal", storagePath: "02-perfil-profesional/foda" },
       { code: "2.4", title: "Hoja de vida", slug: "04-hoja-de-vida", storagePath: "02-perfil-profesional/hoja-de-vida" },
-      { code: "2.1.5", title: "Documentos Personales (DNI, Carné Imprema, Escalafón y Colegio magisterial)", slug: "05-documentos-personales", storagePath: "02-perfil-profesional/documentos-personales" },
-      { code: "2.1.6", title: "Certificados o constancias de formación profesional", slug: "06-certificados-formacion-profesional", storagePath: "02-perfil-profesional/certificados-formacion-profesional" },
+      { code: "2.5", title: "Documentos Personales", slug: "05-documentos-personales", storagePath: "02-perfil-profesional/documentos-personales" },
+      { code: "2.6", title: "Certificados o constancias", slug: "06-certificados-constancias", storagePath: "02-perfil-profesional/certificados-constancias" },
     ],
   },
   {
