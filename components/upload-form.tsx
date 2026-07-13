@@ -3,11 +3,20 @@
 import {
   type DragEvent,
   type FormEvent,
+  useEffect,
   useId,
   useRef,
   useState,
 } from "react";
-import { FileCheck2, FileUp, Trash2, UploadCloud, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileCheck2,
+  FileUp,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
 import { AccessibleDialog } from "@/components/accessible-dialog";
 import { useAuth } from "@/components/auth-provider";
 import { usePortfolio } from "@/components/portfolio-provider";
@@ -20,6 +29,20 @@ import {
 } from "@/lib/file-types";
 import { resolveDocumentPeriod, sectionLabel, subsectionLabel } from "@/lib/portfolio";
 import type { Documento, Parcial, Seccion, Subseccion } from "@/lib/types";
+
+function friendlyUploadError(caught: unknown) {
+  const fallback = "No fue posible conectar con el servidor. Intenta nuevamente.";
+  const message = caught instanceof Error ? caught.message : fallback;
+  const normalized = message.toLocaleLowerCase("es");
+  if (
+    normalized.includes("duplicate")
+    || normalized.includes("already exists")
+    || normalized.includes("ya existe")
+  ) {
+    return "Este documento ya existe en la sección.";
+  }
+  return message || fallback;
+}
 
 export function UploadForm({
   section,
@@ -40,6 +63,7 @@ export function UploadForm({
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -47,6 +71,12 @@ export function UploadForm({
   const titleInput = useRef<HTMLInputElement>(null);
   const dialogTitleId = useId();
   const helpId = useId();
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = window.setTimeout(() => setSuccessMessage(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [successMessage]);
 
   function resetForm() {
     setTitle("");
@@ -59,6 +89,13 @@ export function UploadForm({
 
   function closeDialog() {
     if (uploading) return;
+    setOpen(false);
+    resetForm();
+  }
+
+  function completeUpload(document: Documento) {
+    onCreated(document);
+    setSuccessMessage(`“${document.titulo}” se subió correctamente.`);
     setOpen(false);
     resetForm();
   }
@@ -99,11 +136,12 @@ export function UploadForm({
     );
     if (period.error) return setError(period.error);
 
+    setSuccessMessage("");
     setUploading(true);
     try {
       if (demoMode) {
         const objectUrl = URL.createObjectURL(file);
-        onCreated({
+        completeUpload({
           id: `demo-${Date.now()}`,
           portafolio_id: selectedId,
           seccion_codigo: section.code,
@@ -123,8 +161,6 @@ export function UploadForm({
           nombre_original: file.name,
           comentario_supervisor: null,
         });
-        setOpen(false);
-        resetForm();
         return;
       }
 
@@ -138,11 +174,9 @@ export function UploadForm({
         portfolioId: selectedId,
         onProgress: setProgress,
       });
-      onCreated(document);
-      setOpen(false);
-      resetForm();
+      completeUpload(document);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No fue posible conectar con el servidor. Intenta nuevamente.");
+      setError(friendlyUploadError(caught));
     } finally {
       setUploading(false);
     }
@@ -150,9 +184,36 @@ export function UploadForm({
 
   return (
     <>
+      {successMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-4 top-4 z-[90] flex items-start gap-3 rounded-2xl border border-[#b9d8ca] bg-[#f2fbf6] p-4 text-[#245e50] shadow-[0_18px_48px_rgba(25,62,53,.20)] sm:left-auto sm:right-5 sm:w-full sm:max-w-sm"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d8eee3]">
+            <CheckCircle2 size={19} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <strong className="block text-sm">Documento guardado</strong>
+            <p className="mt-0.5 break-words text-xs leading-5">{successMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage("")}
+            className="grid size-9 shrink-0 place-items-center rounded-lg transition hover:bg-[#d8eee3]"
+            aria-label="Cerrar mensaje de subida"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setSuccessMessage("");
+          setOpen(true);
+        }}
         aria-haspopup="dialog"
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#123b35] px-4 py-3 text-xs font-bold text-white shadow-lg shadow-[#123b35]/12 transition hover:bg-[#1b5148] active:scale-[0.98] motion-reduce:transform-none"
       >
@@ -276,15 +337,27 @@ export function UploadForm({
           </div>
 
           {error && (
-            <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-xs text-red-700">
-              {error}
-            </p>
+            <div
+              role="alert"
+              className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700"
+            >
+              <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1 leading-5">{error}</span>
+              <button
+                type="button"
+                onClick={() => setError("")}
+                className="grid size-8 shrink-0 place-items-center rounded-lg hover:bg-red-100"
+                aria-label="Cerrar mensaje de error"
+              >
+                <X size={14} />
+              </button>
+            </div>
           )}
 
           {uploading && (
             <div className="mt-4" role="status" aria-live="polite">
               <div className="mb-1 flex justify-between text-[11px] font-semibold text-[#536a64]">
-                <span>Subiendo de forma segura…</span>
+                <span>Subiendo archivo… No cierres esta ventana.</span>
                 <span>{progress}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-[#e5e1d8]">
