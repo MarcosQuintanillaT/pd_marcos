@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Download,
   FileCode2,
   FileText,
+  Film,
   Image as ImageIcon,
   LoaderCircle,
   Maximize2,
   X,
 } from "lucide-react";
+import { AccessibleDialog } from "@/components/accessible-dialog";
 import { getFileKind } from "@/lib/file-types";
 
 type FileViewerProps = {
@@ -42,6 +44,8 @@ export function FileViewer({
   downloadUrl,
 }: FileViewerProps) {
   const kind = getFileKind(filePath);
+  const dialogTitleId = useId();
+  const closeButton = useRef<HTMLButtonElement>(null);
   const [htmlPreview, setHtmlPreview] = useState({
     url: "",
     source: "",
@@ -74,8 +78,7 @@ export function FileViewer({
 
   if (!open) return null;
 
-  const htmlLoading =
-    kind === "html" && Boolean(url) && htmlPreview.url !== url;
+  const htmlLoading = kind === "html" && Boolean(url) && htmlPreview.url !== url;
   const htmlSource = htmlPreview.url === url ? htmlPreview.source : "";
   const isolatedHtmlSource = htmlSource ? isolateHtmlPreview(htmlSource) : "";
   const previewError =
@@ -86,7 +89,7 @@ export function FileViewer({
         : "";
 
   const ViewerIcon =
-    kind === "image" ? ImageIcon : kind === "html" ? FileCode2 : FileText;
+    kind === "image" ? ImageIcon : kind === "html" ? FileCode2 : kind === "video" ? Film : FileText;
   const viewerLabel =
     kind === "pdf"
       ? "Visor PDF protegido"
@@ -94,6 +97,8 @@ export function FileViewer({
         ? "Visor de imagen protegido"
         : kind === "html"
           ? "Visor HTML protegido"
+          : kind === "video"
+            ? "Reproductor de video protegido"
           : "Vista protegida";
 
   const fallback = (
@@ -101,7 +106,7 @@ export function FileViewer({
       <div>
         <Maximize2 className="mx-auto mb-4 text-[#9a7a49]" size={38} />
         <h3 className="font-bold text-[#294740]">Vista previa no disponible</h3>
-        <p className="mt-2 max-w-sm text-sm leading-6 text-[#6f7e79]">
+        <p className="mt-2 max-w-sm text-sm leading-6 text-[#5d706a]">
           {previewError ||
             "No fue posible mostrar este archivo. Puedes descargarlo para abrirlo en tu dispositivo."}
         </p>
@@ -110,33 +115,38 @@ export function FileViewer({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex flex-col bg-[#0b211e]/92 p-2 backdrop-blur-sm sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Visor de ${title}`}
+    <AccessibleDialog
+      open={open}
+      onClose={onClose}
+      labelledBy={dialogTitleId}
+      initialFocusRef={closeButton}
+      panelClassName="flex h-full flex-col p-2 sm:p-4"
     >
       <header className="mx-auto flex w-full max-w-7xl items-center gap-3 rounded-t-2xl bg-[#fffdf8] px-4 py-3 sm:px-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#efe2cb] text-[#a36c29]">
-          <ViewerIcon size={18} />
+          <ViewerIcon size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-[#24413c]">{title}</p>
-          <p className="text-[10px] uppercase tracking-wider text-[#81908b]">
+          <p id={dialogTitleId} className="truncate text-sm font-bold text-[#24413c]">
+            {title}
+          </p>
+          <p className="text-[10px] uppercase tracking-wider text-[#667773]">
             {viewerLabel}
           </p>
         </div>
         {downloadUrl && (
           <a
             href={downloadUrl}
-            aria-label="Descargar archivo"
+            aria-label={`Descargar ${title}`}
             className="flex size-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#dedbd0] text-xs font-bold text-[#34544e] hover:bg-[#f1eee5] sm:w-auto sm:px-3"
           >
-            <Download size={16} />
+            <Download size={16} aria-hidden="true" />
             <span className="hidden sm:inline">Descargar</span>
           </a>
         )}
         <button
+          ref={closeButton}
+          type="button"
           onClick={onClose}
           className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#123b35] text-white"
           aria-label="Cerrar visor"
@@ -144,6 +154,7 @@ export function FileViewer({
           <X size={19} />
         </button>
       </header>
+
       <div className="mx-auto min-h-0 w-full max-w-7xl flex-1 overflow-hidden rounded-b-2xl bg-[#e5e3dd]">
         {!url || previewError ? (
           fallback
@@ -163,9 +174,25 @@ export function FileViewer({
               className="max-h-[calc(100dvh-9rem)] max-w-full object-contain"
             />
           </div>
+        ) : kind === "video" ? (
+          <div className="grid h-full min-h-[70dvh] place-items-center overflow-auto bg-[#111815] p-3 sm:p-6">
+            <video
+              src={url}
+              controls
+              preload="metadata"
+              playsInline
+              className="max-h-[calc(100dvh-9rem)] max-w-full rounded-xl bg-black"
+            >
+              Tu navegador no puede reproducir este video.
+            </video>
+          </div>
         ) : kind === "html" ? (
           htmlLoading ? (
-            <div className="grid h-full min-h-[70dvh] place-items-center text-[#526762]">
+            <div
+              className="grid h-full min-h-[70dvh] place-items-center text-[#526762]"
+              role="status"
+              aria-live="polite"
+            >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <LoaderCircle size={18} className="animate-spin" />
                 Preparando vista HTML…
@@ -186,6 +213,6 @@ export function FileViewer({
           fallback
         )}
       </div>
-    </div>
+    </AccessibleDialog>
   );
 }

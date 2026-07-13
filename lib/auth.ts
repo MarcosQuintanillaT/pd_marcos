@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { Perfil, Rol } from "@/lib/types";
 
@@ -9,6 +10,41 @@ export type AuthContext = {
   /** Cliente autenticado con las cookies del usuario; todas las consultas aplican RLS. */
   supabase: SupabaseClient;
 };
+
+const PRIVATE_RESPONSE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0",
+  Pragma: "no-cache",
+} as const;
+
+/** JSON response for authenticated or otherwise user-specific API data. */
+export function privateJson(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  for (const [name, value] of Object.entries(PRIVATE_RESPONSE_HEADERS)) {
+    if (!headers.has(name)) headers.set(name, value);
+  }
+
+  return Response.json(body, { ...init, headers });
+}
+
+/** Logs diagnostics server-side without exposing provider details to clients. */
+export function internalServerError(
+  error?: unknown,
+  developmentMessage = "Ocurrió un error interno",
+) {
+  const reference = randomUUID().slice(0, 8);
+  if (error) console.error("API internal error", { reference, error });
+
+  return privateJson(
+    {
+      error:
+        process.env.NODE_ENV === "production"
+          ? "No se pudo completar la solicitud"
+          : developmentMessage,
+      reference,
+    },
+    { status: 500 },
+  );
+}
 
 export function isSupabaseServerConfigured() {
   return Boolean(
@@ -40,15 +76,15 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 }
 
 export function unauthorized(message = "Debes iniciar sesión") {
-  return Response.json({ error: message }, { status: 401 });
+  return privateJson({ error: message }, { status: 401 });
 }
 
 export function forbidden(message = "No tienes permiso para esta acción") {
-  return Response.json({ error: message }, { status: 403 });
+  return privateJson({ error: message }, { status: 403 });
 }
 
 export function unconfigured() {
-  return Response.json(
+  return privateJson(
     {
       error:
         process.env.NODE_ENV !== "production"

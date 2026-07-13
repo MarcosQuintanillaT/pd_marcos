@@ -3,45 +3,21 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  BookOpen,
-  Building2,
-  CalendarCheck,
-  ChevronDown,
-  ClipboardList,
-
-  IdCard,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  PanelLeftClose,
-  Paperclip,
-  ShieldCheck,
-  User,
-  UserRound,
-  X,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, LogOut, Menu, PanelLeftClose, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { PageLoader } from "@/components/page-loader";
+import { SECTION_ICONS } from "@/components/portfolio-icons";
+import { usePortfolio } from "@/components/portfolio-provider";
 import { PORTFOLIO_SECTIONS, sectionHref } from "@/lib/portfolio";
-
-const SECTION_ICONS = {
-  "1": IdCard,
-  "2": User,
-  "3": Building2,
-  "4": BookOpen,
-  "5": LayoutGrid,
-  "6": ClipboardList,
-  "7": CalendarCheck,
-  "8": Paperclip,
-} as const;
 
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const { loading, role, perfil, demoMode, logout } = useAuth();
+  const { portfolios, selectedId, select } = usePortfolio();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setOpen(false), 0);
@@ -49,9 +25,26 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
   useEffect(() => {
     if (!open) return;
+    const trigger = menuButton.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
+    const focusFrame = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(
+          "#mobile-navigation-drawer [data-sidebar-close]",
+        )
+        ?.focus();
+    });
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", closeWithEscape);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeWithEscape);
+      trigger?.focus({ preventScroll: true });
+    };
   }, [open]);
   useEffect(() => { if (!loading && !role) router.replace(`/login?next=${encodeURIComponent(pathname)}`); }, [loading, role, router, pathname]);
   if (loading || !role) return <PageLoader />;
@@ -67,22 +60,23 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           </span>
           <span className="min-w-0"><strong className="block truncate text-sm tracking-wide">PORTAFOLIO</strong><small className="block truncate text-xs text-white/52">Docente Digital</small></span>
         </Link>
-        <button onClick={() => setOpen(false)} className="grid size-10 place-items-center rounded-xl text-white/65 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú"><X size={20} /></button>
+        <button type="button" data-sidebar-close onClick={() => setOpen(false)} className="grid size-10 place-items-center rounded-xl text-white/65 hover:bg-white/10 lg:hidden" aria-label="Cerrar menú"><X size={20} /></button>
       </div>
 
       <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-5" aria-label="Índice oficial del portafolio">
-        <Link href="/portafolio" aria-current={pathname === "/portafolio" ? "page" : undefined} className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname === "/portafolio" ? "bg-white/10 text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}>
+        <Link href="/portafolio" aria-current={pathname === "/portafolio" ? "page" : undefined} className={`mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname === "/portafolio" ? "bg-transparent text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}>
           <span className="grid size-7 place-items-center rounded-lg bg-[#c98b3c]/20 text-xs font-black text-[#e8bb79]">⌂</span>Resumen general
         </Link>
-        <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[.18em] text-white/35">Índice del portafolio</p>
+        {role === "docente" && <Link href="/portafolio/papelera" className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition ${pathname === "/portafolio/papelera" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/8 hover:text-white"}`}><span className="grid size-7 place-items-center rounded-lg bg-white/7"><Trash2 size={14} /></span>Papelera</Link>}
+        <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[.18em] text-white/60">Índice del portafolio</p>
         <div className="space-y-1.5">
           {PORTFOLIO_SECTIONS.map((section) => {
             const active = pathname.includes(`/${section.slug}`);
-            const SectionIcon = SECTION_ICONS[section.code as keyof typeof SECTION_ICONS];
+            const SectionIcon = SECTION_ICONS[section.code];
             if (section.code === "1") return (
               <Link key={section.code} href={sectionHref(section)} onClick={() => setOpen(false)} className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/7 hover:text-white"}`}>
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: section.color }}>{section.code}</span>
-                <SectionIcon aria-hidden="true" size={17} strokeWidth={1.75} className="shrink-0 text-white/75" />
+                <SectionIcon aria-hidden="true" size={17} strokeWidth={1.75} className="shrink-0 text-white" />
                 <span className="min-w-0 flex-1 font-semibold leading-5">{section.title}</span>
               </Link>
             );
@@ -90,12 +84,12 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
               <details key={section.code} className="group" open={active || undefined}>
                 <summary className={`flex cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition [&::-webkit-details-marker]:hidden ${active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/7 hover:text-white"}`}>
                   <span className="grid size-7 shrink-0 place-items-center rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: section.color }}>{section.code}</span>
-                  <SectionIcon aria-hidden="true" size={17} strokeWidth={1.75} className="shrink-0 text-white/75" />
+                  <SectionIcon aria-hidden="true" size={17} strokeWidth={1.75} className="shrink-0 text-white" />
                   <span className="min-w-0 flex-1 font-semibold leading-5">{section.title}</span>
                   <ChevronDown size={15} className="shrink-0 text-white/40 transition group-open:rotate-180" />
                 </summary>
                 <div className="ml-[26px] border-l border-white/10 py-1.5 pl-3">
-                  <Link href={sectionHref(section)} className={`mb-1 block rounded-lg px-3 py-2 text-xs font-semibold transition ${pathname === sectionHref(section) ? "bg-[#c98b3c] text-white" : "text-white/45 hover:bg-white/7 hover:text-white/85"}`}>Vista de la sección</Link>
+                  <Link href={sectionHref(section)} className={`mb-1 block rounded-lg px-3 py-2 text-xs font-semibold transition ${pathname === sectionHref(section) ? "bg-[#c98b3c] text-white" : "text-white/70 hover:bg-white/7 hover:text-white"}`}>Vista de la sección</Link>
                   {section.subsections.map((subsection) => {
                     const subsectionHref = section.code === "1" ? `${sectionHref(section)}#${subsection.slug}` : sectionHref(section, subsection);
                     return <div key={subsection.code}>
@@ -103,7 +97,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
                         <span className="mr-1 font-bold text-[#d8a85f]">{subsection.code}.</span>{subsection.title}
                       </Link>
                       {subsection.children?.map((child) => (
-                        <Link key={child.code} href={sectionHref(section, child)} className={`ml-2 block rounded-lg px-3 py-2 text-[11px] leading-4 transition ${pathname === sectionHref(section, child) ? "bg-white/12 font-bold text-white" : "text-white/48 hover:bg-white/7 hover:text-white"}`}>
+                        <Link key={child.code} href={sectionHref(section, child)} className={`ml-2 block rounded-lg px-3 py-2 text-[11px] leading-4 transition ${pathname === sectionHref(section, child) ? "bg-white/12 font-bold text-white" : "text-white/65 hover:bg-white/7 hover:text-white"}`}>
                           <span className="mr-1 font-bold text-[#d8a85f]">{child.code}.</span>{child.title}
                         </Link>
                       ))}
@@ -140,11 +134,19 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:pl-[310px]">
       <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">{sidebar}</div>
-      {open && <div className="fixed inset-0 z-50 lg:hidden"><button aria-label="Cerrar menú" className="absolute inset-0 cursor-default bg-[#0b2824]/60 backdrop-blur-sm" onClick={() => setOpen(false)} /><div className="relative h-full animate-enter">{sidebar}</div></div>}
+      {open && <div id="mobile-navigation-drawer" role="dialog" aria-modal="true" aria-label="Índice del portafolio" className="fixed inset-0 z-50 lg:hidden"><button type="button" aria-label="Cerrar menú" className="absolute inset-0 cursor-default bg-[#0b2824]/60 backdrop-blur-sm" onClick={() => setOpen(false)} /><div className="relative h-full animate-enter">{sidebar}</div></div>}
       <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#dedbd0]/80 bg-[#f4f1e8]/88 px-4 backdrop-blur-xl sm:px-7 lg:px-10">
-        <button onClick={() => setOpen(true)} className="grid size-11 place-items-center rounded-xl border border-[#d8d5ca] bg-[#fffdf8] text-[#173732] shadow-sm lg:hidden" aria-label="Abrir menú"><Menu size={21} /></button>
+        <button ref={menuButton} type="button" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="mobile-navigation-drawer" className="grid size-11 place-items-center rounded-xl border border-[#d8d5ca] bg-[#fffdf8] text-[#173732] shadow-sm lg:hidden" aria-label="Abrir menú"><Menu size={21} /></button>
         <div className="hidden items-center gap-2 text-xs font-semibold text-[#6f7e79] lg:flex"><PanelLeftClose size={16} />Índice institucional · 8 secciones</div>
         <div className="flex items-center gap-3">
+          {portfolios.length > 0 && (
+            <label className="hidden sm:block">
+              <span className="sr-only">Año lectivo</span>
+              <select value={selectedId} onChange={(event) => select(event.target.value)} className="h-10 rounded-full border border-[#d8d5ca] bg-[#fffdf8] px-3 text-sm font-bold text-[#34544e]">
+                {portfolios.map((item) => <option key={item.id} value={item.id}>{item.anio_lectivo}{item.estado === "Archivado" ? " · Archivado" : ""}</option>)}
+              </select>
+            </label>
+          )}
           {demoMode && <span className="hidden rounded-full bg-[#f1dfbf] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#845c21] sm:inline">Demostración</span>}
           <span className="rounded-full border border-[#d8d5ca] bg-[#fffdf8] px-3 py-1.5 text-xs font-bold capitalize text-[#34544e]">{role}</span>
         </div>

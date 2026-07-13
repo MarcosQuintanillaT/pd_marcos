@@ -8,8 +8,15 @@ out/
 .vercel/
 tsconfig.tsbuildinfo
 
+# Estado local generado por Supabase CLI (referencia, pooler y versiones).
+supabase/.temp/
+
 # Credenciales locales: nunca versionar.
 CLAVE BD SUPABASE PD_MARCOS.txt
 
-.vercel
-.env*
+# Salidas generadas por pruebas visuales. Las capturas que ya estan versionadas
+# se conservan como linea base; Git seguira detectando cambios sobre ellas.
+artifacts/production-smoke/*.png
+artifacts/production-smoke/*.html
+artifacts/production-smoke/*.json
+artifacts/production-smoke/*.tmp

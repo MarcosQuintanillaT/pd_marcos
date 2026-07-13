@@ -1,0 +1,51 @@
+name: Calidad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Pruebas y compilacion
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      NEXT_PUBLIC_DEMO_MODE: "false"
+      NEXT_PUBLIC_DOCENTE_NOMBRE: Docente CI
+      NEXT_PUBLIC_DOCENTE_AREA: Informatica
+      NEXT_PUBLIC_DOCENTE_JORNADA: Matutina
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias exactas
+        run: npm ci
+
+      - name: Ejecutar pruebas unitarias
+        run: npm run test:unit
+
+      - name: Verificar TypeScript
+        run: npm run typecheck
+
+      - name: Ejecutar ESLint
+        run: npm run lint
+
+      - name: Compilar Next.js
+        run: npm run build

@@ -1,4 +1,5 @@
 -- Migración idempotente para proyectos donde tablas/RLS ya existen.
+-- Migración versionada: 202607120003.
 drop trigger if exists limitar_columnas_supervisor on public.documentos;
 drop trigger if exists trg_check_supervisor_update on public.documentos;
 drop function if exists public.proteger_actualizacion_supervisor();

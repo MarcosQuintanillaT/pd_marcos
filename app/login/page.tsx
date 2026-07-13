@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, CheckCircle2, CircleAlert, Eye, EyeOff, FileCheck2, GraduationCap, LoaderCircle, LockKeyhole, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { safePortfolioRedirect } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
 
 const SUPABASE_CONFIG_ERROR = "Configura Supabase antes de ingresar";
@@ -40,7 +41,7 @@ function LoginContent() {
       : "Escribe tu correo electrónico."
     : "";
 
-  const destination = search.get("next") || "/portafolio";
+  const destination = safePortfolioRedirect(search.get("next"));
   useEffect(() => { if (!loading && role) router.replace(destination); }, [loading, role, router, destination]);
   useEffect(() => {
     if (!configured || requestedError !== SUPABASE_CONFIG_ERROR) return;
@@ -120,7 +121,7 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-dvh bg-[#f4f1e8] px-3 py-3 sm:px-6 sm:py-6 md:px-8 md:py-8 xl:grid xl:grid-cols-[1.02fr_.98fr] xl:p-0">
+    <main className="min-h-dvh w-full overflow-x-hidden bg-[#f4f1e8] px-3 py-3 sm:px-6 sm:py-6 md:px-8 md:py-8 xl:grid xl:grid-cols-[1.02fr_.98fr] xl:p-0">
       <section className="relative hidden overflow-hidden bg-[#123b35] p-12 text-white xl:flex xl:min-h-dvh xl:flex-col xl:p-16">
         <div className="login-ambient absolute -right-24 -top-24 size-96 rounded-full border border-white/10" />
         <div className="login-ambient login-ambient-offset absolute -right-5 top-20 size-64 rounded-full border border-[#c98b3c]/25" />
@@ -145,8 +146,8 @@ function LoginContent() {
         </div>
       </section>
 
-      <section className="flex min-h-[calc(100dvh-1.5rem)] items-start justify-center sm:min-h-[calc(100dvh-3rem)] md:min-h-[calc(100dvh-4rem)] xl:min-h-dvh xl:items-center">
-        <div className="w-full max-w-[560px] rounded-[1.5rem] border border-[#dedbd0] bg-[#fffdf8] p-5 shadow-[0_20px_70px_rgba(31,52,46,.12)] sm:rounded-[2rem] sm:p-8 md:p-10 xl:max-w-[510px] xl:border-0 xl:bg-transparent xl:shadow-none">
+      <section className="flex min-h-[calc(100dvh-1.5rem)] w-full min-w-0 items-start justify-center sm:min-h-[calc(100dvh-3rem)] md:min-h-[calc(100dvh-4rem)] xl:min-h-dvh xl:items-center">
+        <div className="w-full min-w-0 max-w-[560px] rounded-[1.5rem] border border-[#dedbd0] bg-[#fffdf8] p-5 shadow-[0_20px_70px_rgba(31,52,46,.12)] sm:rounded-[2rem] sm:p-8 md:p-10 xl:max-w-[510px] xl:border-0 xl:bg-transparent xl:shadow-none">
           <div className="mb-7 flex items-center gap-3 sm:mb-9 xl:hidden">
             <span className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-white p-1 shadow-sm">
               <Image src="/logo/logotipo_portafolio_digital_v2.png" alt="Logotipo del portafolio docente" width={44} height={44} className="size-full object-contain" priority />
@@ -161,7 +162,7 @@ function LoginContent() {
           <p className="mx-auto mt-3 max-w-md text-center text-sm leading-6 text-[#687873]">{demoMode ? "Vista de demostración habilitada por variable de entorno." : configured ? "Usa la cuenta asignada por la institución." : isDevelopment ? "Falta completar la configuración local de Supabase." : "El servicio no está disponible temporalmente."}</p>
 
           {!demoMode ? (
-            <form onSubmit={submit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5" aria-busy={submitting || resetting}>
+            <form onSubmit={submit} className="mt-6 min-w-0 space-y-4 sm:mt-8 sm:space-y-5" aria-busy={submitting || resetting}>
               <label className="block text-sm font-bold text-[#284842]">Correo electrónico
                 <span className="relative mt-2 block">
                   <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => setEmailTouched(true)} disabled={submitting || resetting} aria-invalid={Boolean(emailError)} aria-describedby={emailError ? "login-email-error" : undefined} placeholder="nombre@institucion.edu.hn" className="login-input h-12 w-full rounded-xl border border-[#d8d5ca] bg-white px-4 pr-11 text-base font-normal text-[#173732] shadow-sm placeholder:text-[#9aa6a2] disabled:cursor-not-allowed disabled:bg-[#f4f1e8] sm:h-13" />
@@ -177,7 +178,7 @@ function LoginContent() {
                 {capsLock && <span id="login-caps-lock" role="status" className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700"><CircleAlert size={14} />Bloq Mayús está activado</span>}
               </label>
               <div className="-mt-1 flex justify-end sm:-mt-2">
-                <button type="button" onClick={toggleRecoveryPanel} disabled={submitting || resetting || !configured} aria-expanded={recoveryOpen} aria-controls="password-recovery-panel" className="login-forgot-link inline-flex min-h-11 items-center text-xs font-bold text-[#356c61] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" onClick={toggleRecoveryPanel} disabled={submitting || resetting || !configured} aria-expanded={recoveryOpen} aria-controls="password-recovery-panel" className="login-forgot-link inline-flex min-h-11 max-w-full items-center text-right text-xs font-bold text-[#356c61] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50">
                   ¿Olvidaste tu contraseña?
                 </button>
               </div>

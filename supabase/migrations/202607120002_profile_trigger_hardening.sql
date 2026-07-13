@@ -1,4 +1,5 @@
 -- Perfil automático seguro para altas creadas desde Supabase Auth/Admin API.
+-- Migración versionada: 202607120002.
 -- El rol privilegiado solo se acepta desde raw_app_meta_data, que no puede
 -- modificar un usuario final. El valor por defecto deliberadamente es supervisor.
 

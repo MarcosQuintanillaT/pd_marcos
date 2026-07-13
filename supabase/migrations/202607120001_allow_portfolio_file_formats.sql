@@ -1,4 +1,5 @@
 -- Mantiene el portafolio privado y amplía los formatos admitidos.
+-- Migración versionada: 202607120001.
 -- Es idempotente: puede ejecutarse aunque el bucket ya exista.
 insert into storage.buckets (
   id,

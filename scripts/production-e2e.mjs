@@ -1,12 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-
-if (!process.argv.includes("--confirm-temporary-users")) {
-  throw new Error(
-    "Esta prueba crea y elimina dos usuarios temporales. Ejecuta con --confirm-temporary-users.",
-  );
-}
+import { assertRemoteTestPermission } from "./remote-test-guard.mjs";
 
 async function loadLocalEnv() {
   const raw = await readFile(new URL("../.env.local", import.meta.url), "utf8");
@@ -27,7 +22,11 @@ if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   throw new Error("Faltan las variables reales de Supabase en .env.local");
 }
 
-const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+const { projectRef, target: remoteTestTarget } = assertRemoteTestPermission({
+  supabaseUrl,
+});
+console.log(`[remote-test] Destino autorizado: ${remoteTestTarget} (${projectRef})`);
+
 const runId = `${Date.now()}-${randomUUID().slice(0, 6)}`;
 const teacherEmail = `codex-e2e-docente-${runId}@example.com`;
 const supervisorEmail = `codex-e2e-supervisor-${runId}@example.com`;

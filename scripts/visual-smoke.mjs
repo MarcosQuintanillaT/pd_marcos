@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { assertRemoteTestPermission } from "./remote-test-guard.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -110,10 +111,14 @@ if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   throw new Error("Faltan variables reales de Supabase");
 }
 
+const { projectRef, target: remoteTestTarget } = assertRemoteTestPermission({
+  supabaseUrl,
+});
+console.log(`[remote-test] Destino autorizado: ${remoteTestTarget} (${projectRef})`);
+
 const chrome =
   process.env.CHROME_PATH ||
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
 const outputDir = resolve(root, "artifacts", "production-smoke");
 const tempRoot = resolve("C:\\tmp", `pd-marcos-visual-${Date.now()}`);
 await mkdir(outputDir, { recursive: true });
