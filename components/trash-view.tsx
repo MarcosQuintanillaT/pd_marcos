@@ -269,9 +269,20 @@ export function TrashView() {
               <p className="mt-2 text-sm leading-6 text-[#5f716c]">Los documentos se conservan 30 días antes de eliminar sus archivos y versiones.</p>
             </div>
           </div>
-          <button type="button" onClick={() => void purgeExpired()} disabled={purgingExpired || total === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d8b77f] bg-[#fff8ec] px-4 text-xs font-bold text-[#8a5d25] transition hover:bg-[#f7e8ce] disabled:cursor-not-allowed disabled:opacity-50">
-            <CalendarClock size={16} />{purgingExpired ? "Purgando…" : "Purgar vencidos"}
-          </button>
+          <div className="w-full sm:w-auto sm:max-w-xs">
+            <button
+              type="button"
+              onClick={() => void purgeExpired()}
+              disabled={purgingExpired || total === 0}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#d8b77f] bg-[#fff8ec] px-4 text-xs font-bold text-[#8a5d25] transition hover:bg-[#f7e8ce] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CalendarClock size={16} />
+              {purgingExpired ? "Eliminando…" : "Eliminar vencidos definitivamente"}
+            </button>
+            <p className="mt-2 text-center text-[11px] leading-5 text-[#6d7e79] sm:text-right">
+              Elimina permanentemente los documentos que llevan más de 30 días en la papelera.
+            </p>
+          </div>
         </div>
       </header>
 
