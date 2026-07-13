@@ -292,7 +292,7 @@ export function TrashView() {
       <section className="mt-7" aria-labelledby="trash-list-title">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div><h2 id="trash-list-title" className="text-lg font-bold text-[#294740]">Documentos eliminados</h2><p className="mt-1 text-xs text-[#6d7e79]">{total} {total === 1 ? "documento" : "documentos"} · {expiredOnPage} vencidos en esta página</p></div>
-          <span className="rounded-full bg-[#f4e9d7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#8a5d25]">Purga diaria automática</span>
+          <span className="rounded-full bg-[#f4e9d7] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#8a5d25]">Eliminación automática · 30 días</span>
         </div>
 
         {loading ? (
