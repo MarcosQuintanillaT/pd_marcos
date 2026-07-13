@@ -18,18 +18,20 @@ import {
   formatFileSize,
   validatePortfolioFile,
 } from "@/lib/file-types";
-import { sectionLabel, subsectionLabel } from "@/lib/portfolio";
+import { resolveDocumentPeriod, sectionLabel, subsectionLabel } from "@/lib/portfolio";
 import type { Documento, Parcial, Seccion, Subseccion } from "@/lib/types";
 
 export function UploadForm({
   section,
   subsection,
   parcial,
+  general = false,
   onCreated,
 }: {
   section: Seccion;
   subsection: Subseccion;
   parcial: Parcial | null;
+  general?: boolean;
   onCreated: (document: Documento) => void;
 }) {
   const { demoMode, perfil } = useAuth();
@@ -90,9 +92,12 @@ export function UploadForm({
     setError("");
     if (!file) return setError("Selecciona un archivo");
     if (!title.trim()) return setError("Escribe el título visible");
-    if (subsection.supportsParcial && !parcial) {
-      return setError("Selecciona el parcial antes de subir");
-    }
+    const period = resolveDocumentPeriod(
+      subsection,
+      subsection.fixedParcial ?? parcial,
+      general,
+    );
+    if (period.error) return setError(period.error);
 
     setUploading(true);
     try {
@@ -105,7 +110,7 @@ export function UploadForm({
           subseccion_codigo: subsection.code,
           seccion: sectionLabel(section),
           subseccion: subsectionLabel(subsection),
-          parcial: subsection.fixedParcial ?? parcial,
+          parcial: period.parcial,
           titulo: title.trim(),
           archivo_url: file.name,
           signed_url: objectUrl,
@@ -128,7 +133,8 @@ export function UploadForm({
         file,
         title: title.trim(),
         subsectionCode: subsection.code,
-        parcial: subsection.fixedParcial ?? parcial,
+        parcial: period.parcial,
+        general: period.general,
         portfolioId: selectedId,
         onProgress: setProgress,
       });
@@ -175,6 +181,11 @@ export function UploadForm({
               <p className="mt-1 text-xs leading-5 text-[#667773]">
                 {subsection.title}
               </p>
+              {subsection.supportsParcial && (
+                <p className="mt-2 inline-flex rounded-full bg-[#f2e6d1] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#8d612b]">
+                  Período: {general ? "General/Anual" : `${subsection.fixedParcial ?? parcial} Parcial`}
+                </p>
+              )}
             </div>
             <button
               type="button"

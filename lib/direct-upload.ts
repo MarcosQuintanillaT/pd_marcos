@@ -8,6 +8,7 @@ type DirectUploadInput = {
   title: string;
   subsectionCode: string;
   parcial: Parcial | null;
+  general?: boolean;
   portfolioId: string;
   replacingId?: string | null;
   onProgress?: (progress: number) => void;
@@ -23,6 +24,7 @@ export async function uploadPortfolioFile(input: DirectUploadInput): Promise<Doc
     titulo: input.title,
     subseccion: input.subsectionCode,
     parcial: input.parcial,
+    general: input.general ?? false,
     portafolio: input.portfolioId,
     nombre: input.file.name,
     mime: input.file.type,

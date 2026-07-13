@@ -9,7 +9,7 @@ import { portfolioIdFrom, resolvePortfolio } from "@/lib/active-portfolio";
 import { DOCUMENT_COLUMNS } from "@/lib/document-api";
 import { safeFilename } from "@/lib/documents";
 import { getFileExtension } from "@/lib/file-types";
-import { BUCKET_DOCUMENTOS } from "@/lib/portfolio";
+import { BUCKET_DOCUMENTOS, findByCode } from "@/lib/portfolio";
 import type { Documento } from "@/lib/types";
 import { createStoredZip } from "@/lib/zip-store";
 
@@ -53,7 +53,11 @@ export async function GET(request: Request) {
       item.subseccion,
       item.titulo,
       item.estado,
-      item.parcial ?? "",
+      item.parcial
+        ? `${item.parcial} Parcial`
+        : findByCode(item.subseccion_codigo ?? "")?.subsection.allowsGeneral
+          ? "General/Anual"
+          : "",
       item.fecha_subida,
     ].map(csvCell).join(",")),
   ];

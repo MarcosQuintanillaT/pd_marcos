@@ -105,6 +105,8 @@ export interface Subseccion {
   slug: string;
   storagePath: string;
   supportsParcial?: boolean;
+  /** Permite documentos anuales con parcial nulo además de I-IV. */
+  allowsGeneral?: boolean;
   fixedParcial?: Parcial;
   children?: Subseccion[];
 }

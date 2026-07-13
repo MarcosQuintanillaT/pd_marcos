@@ -14,7 +14,7 @@ import { describePortfolioFile, maximumFileBytes } from "@/lib/file-types";
 import {
   BUCKET_DOCUMENTOS,
   findByCode,
-  PARCIALES,
+  resolveDocumentPeriod,
   storageFolder,
 } from "@/lib/portfolio";
 import type { Parcial } from "@/lib/types";
@@ -23,6 +23,7 @@ type UploadRequest = {
   titulo?: string;
   subseccion?: string;
   parcial?: Parcial | null;
+  general?: boolean;
   portafolio?: string | null;
   nombre?: string;
   mime?: string;
@@ -54,14 +55,13 @@ export async function POST(request: Request) {
     return privateJson({ error: "El tamaño del archivo no es válido" }, { status: 400 });
   }
 
-  let parcial = body.parcial ?? null;
-  if (found.subsection.fixedParcial) parcial = found.subsection.fixedParcial;
-  if (found.subsection.supportsParcial && !parcial) {
-    return privateJson({ error: "Selecciona el parcial" }, { status: 400 });
-  }
-  if (parcial && !PARCIALES.includes(parcial)) {
-    return privateJson({ error: "Parcial no válido" }, { status: 400 });
-  }
+  const period = resolveDocumentPeriod(
+    found.subsection,
+    body.parcial,
+    body.general === true,
+  );
+  if (period.error) return privateJson({ error: period.error }, { status: 400 });
+  const parcial = period.parcial;
 
   const { portfolio, error: portfolioError } = await resolvePortfolio(auth, body.portafolio);
   if (portfolioError) return internalServerError(portfolioError, portfolioError.message);
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     return privateJson({ error: "El portafolio seleccionado está archivado o no existe" }, { status: 409 });
   }
 
-  let folder = storageFolder(found.subsection, parcial);
+  let folder = storageFolder(found.subsection, parcial, period.general);
   if (body.reemplazar_id) {
     const current = await auth.supabase
       .from("documentos")

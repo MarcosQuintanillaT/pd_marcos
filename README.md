@@ -10,6 +10,7 @@ Gestor documental del portafolio oficial de un docente BTP, construido con Next.
 - Carga directa y segura a Storage de PDF, HTML, imágenes y videos MP4/WebM.
 - Nombres descriptivos en Storage: `slug-del-titulo_a1b2c3.ext`.
 - Búsqueda global, filtros por estado/parcial y bandeja de pendientes para el supervisor.
+- Organización controlada por General/Anual y parciales I-IV en Programación, Planes de clase y Rúbricas.
 - Dashboard con avance de cobertura y avance de revisión como métricas separadas.
 - Visor integrado, descarga con enlaces firmados de 10 minutos y advertencia para HTML.
 - Historial de revisiones, versiones al reemplazar archivos y papelera recuperable.

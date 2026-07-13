@@ -20,6 +20,11 @@ export default async function SectionPage({ params }: Props) {
   const subsection = ruta[1] ? findSubsection(section, ruta[1]) : undefined;
   if (ruta[1] && !subsection) notFound();
   if (section.code === "1" && subsection) redirect(sectionHref(section));
-  return <SectionView section={section} subsection={subsection} />;
+  return (
+    <SectionView
+      key={subsection?.code ?? section.code}
+      section={section}
+      subsection={subsection}
+    />
+  );
 }
-

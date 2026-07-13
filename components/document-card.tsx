@@ -33,6 +33,7 @@ import {
   getFileKind,
   validatePortfolioFile,
 } from "@/lib/file-types";
+import { findByCode } from "@/lib/portfolio";
 import type { Documento } from "@/lib/types";
 
 const statusStyles = {
@@ -72,6 +73,13 @@ export function DocumentCard({
     year: "numeric",
   }).format(new Date(document.fecha_subida));
   const fileKind = getFileKind(document.archivo_url);
+  const subsectionCode = document.subseccion_codigo
+    ?? document.subseccion.match(/^([0-9]+(?:\.[0-9]+){1,2})\./)?.[1]
+    ?? "";
+  const documentLocation = findByCode(subsectionCode);
+  const isGeneralAnnual = Boolean(
+    documentLocation?.subsection.allowsGeneral && !document.parcial,
+  );
   const DocumentIcon =
     fileKind === "image"
       ? ImageIcon
@@ -136,15 +144,13 @@ export function DocumentCard({
         return;
       }
 
-      const subsectionCode = document.subseccion_codigo
-        ?? document.subseccion.match(/^([0-9]+(?:\.[0-9]+){1,2})\./)?.[1]
-        ?? "";
       if (!selectedId || !subsectionCode) throw new Error("No se pudo identificar la ubicación del documento");
       const updated = await uploadPortfolioFile({
         file,
         title: document.titulo,
         subsectionCode,
         parcial: document.parcial,
+        general: isGeneralAnnual,
         portfolioId: selectedId,
         replacingId: document.id,
       });
@@ -288,6 +294,11 @@ export function DocumentCard({
               {document.parcial && (
                 <span className="rounded-md bg-[#ece9e1] px-2 py-1 font-bold text-[#596d67]">
                   {document.parcial} Parcial
+                </span>
+              )}
+              {isGeneralAnnual && (
+                <span className="rounded-md bg-[#f2e6d1] px-2 py-1 font-bold text-[#8d612b]">
+                  General/Anual
                 </span>
               )}
               {document.tamano_bytes && <span>{formatFileSize(document.tamano_bytes)}</span>}

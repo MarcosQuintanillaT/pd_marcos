@@ -57,10 +57,10 @@ export const PORTFOLIO_SECTIONS: Seccion[] = [
       { code: "4.2", title: "SACE", slug: "02-sace", storagePath: "04-filosofia-ensenanza/sace" },
       { code: "4.3", title: "Listados de grupo de trabajo (estrategias utilizadas por parcial)", slug: "03-grupos-trabajo", storagePath: "04-filosofia-ensenanza/grupos-trabajo", supportsParcial: true },
       { code: "4.4", title: "Evaluaciones", slug: "04-evaluaciones", storagePath: "04-filosofia-ensenanza/evaluaciones", supportsParcial: true },
-      { code: "4.5", title: "Programación (definición de objetivos)", slug: "05-programacion", storagePath: "04-filosofia-ensenanza/programacion" },
+      { code: "4.5", title: "Programación (definición de objetivos)", slug: "05-programacion", storagePath: "04-filosofia-ensenanza/programacion", supportsParcial: true, allowsGeneral: true },
       { code: "4.6", title: "Calendarización (distribución de tiempo)", slug: "06-calendarizacion", storagePath: "04-filosofia-ensenanza/calendarizacion" },
-      { code: "4.7", title: "Planes de clase (ejecución diaria)", slug: "07-planes-de-clase", storagePath: "04-filosofia-ensenanza/planes-de-clase" },
-      { code: "4.8", title: "Rúbricas (métricas de evaluación)", slug: "08-rubricas", storagePath: "04-filosofia-ensenanza/rubricas" },
+      { code: "4.7", title: "Planes de clase (ejecución diaria)", slug: "07-planes-de-clase", storagePath: "04-filosofia-ensenanza/planes-de-clase", supportsParcial: true, allowsGeneral: true },
+      { code: "4.8", title: "Rúbricas (métricas de evaluación)", slug: "08-rubricas", storagePath: "04-filosofia-ensenanza/rubricas", supportsParcial: true, allowsGeneral: true },
     ],
   },
   {
@@ -150,8 +150,51 @@ export function findByCode(code: string) {
   return null;
 }
 
-export function storageFolder(subsection: Subseccion, parcial?: Parcial | null) {
-  if (!parcial || subsection.fixedParcial) return subsection.storagePath;
+export function resolveDocumentPeriod(
+  subsection: Subseccion,
+  parcial?: Parcial | null,
+  general = false,
+): { parcial: Parcial | null; general: boolean; error: string | null } {
+  if (parcial && general) {
+    return { parcial: null, general: false, error: "Selecciona un único período" };
+  }
+  if (subsection.fixedParcial) {
+    if (general || (parcial && parcial !== subsection.fixedParcial)) {
+      return { parcial: null, general: false, error: "Período no válido" };
+    }
+    return { parcial: subsection.fixedParcial, general: false, error: null };
+  }
+  if (parcial && !PARCIALES.includes(parcial)) {
+    return { parcial: null, general: false, error: "Parcial no válido" };
+  }
+  if (!subsection.supportsParcial) {
+    return parcial || general
+      ? { parcial: null, general: false, error: "Esta subsección no se organiza por parcial" }
+      : { parcial: null, general: false, error: null };
+  }
+  if (parcial) return { parcial, general: false, error: null };
+  if (general && subsection.allowsGeneral) {
+    return { parcial: null, general: true, error: null };
+  }
+  return {
+    parcial: null,
+    general: false,
+    error: subsection.allowsGeneral
+      ? "Selecciona General/Anual o un parcial"
+      : "Selecciona el parcial",
+  };
+}
+
+export function storageFolder(
+  subsection: Subseccion,
+  parcial?: Parcial | null,
+  general = false,
+) {
+  if (subsection.fixedParcial) return subsection.storagePath;
+  if (general && subsection.allowsGeneral) {
+    return `${subsection.storagePath}/general-anual`;
+  }
+  if (!parcial) return subsection.storagePath;
   const number = PARCIALES.indexOf(parcial) + 1;
   return `${subsection.storagePath}/parcial-${number}`;
 }
@@ -163,4 +206,3 @@ export function sectionLabel(section: Seccion) {
 export function subsectionLabel(subsection: Subseccion) {
   return `${subsection.code}. ${subsection.title}`;
 }
-

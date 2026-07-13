@@ -20,6 +20,7 @@ import {
   BUCKET_DOCUMENTOS,
   findByCode,
   PARCIALES,
+  resolveDocumentPeriod,
   sectionLabel,
   storageFolder,
   subsectionLabel,
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
   const subsectionCode = searchParams.get("subseccion");
   const sectionCode = searchParams.get("seccion");
   const parcial = searchParams.get("parcial");
+  const periodo = searchParams.get("periodo");
   const estado = searchParams.get("estado");
   const queryText = searchParams.get("q")?.trim().slice(0, 80);
   const trash = searchParams.get("papelera") === "true";
@@ -62,8 +64,9 @@ export async function GET(request: Request) {
     .range(range.from, range.to);
 
   query = trash ? query.not("eliminado_en", "is", null) : query.is("eliminado_en", null);
+  const selectedSubsection = subsectionCode ? findByCode(subsectionCode) : null;
   if (subsectionCode) {
-    if (!findByCode(subsectionCode)) {
+    if (!selectedSubsection) {
       return privateJson({ error: "Subsección no válida" }, { status: 400 });
     }
     query = query.eq("subseccion_codigo", subsectionCode);
@@ -73,7 +76,15 @@ export async function GET(request: Request) {
     }
     query = query.eq("seccion_codigo", sectionCode);
   }
-  if (parcial) {
+  if (parcial && periodo) {
+    return privateJson({ error: "Selecciona un único período" }, { status: 400 });
+  }
+  if (periodo) {
+    if (periodo !== "general" || !selectedSubsection?.subsection.allowsGeneral) {
+      return privateJson({ error: "Período no válido" }, { status: 400 });
+    }
+    query = query.is("parcial", null);
+  } else if (parcial) {
     if (!PARCIALES.includes(parcial as Parcial)) {
       return privateJson({ error: "Parcial no válido" }, { status: 400 });
     }
@@ -125,14 +136,14 @@ export async function POST(request: Request) {
     return privateJson({ error: "Subsección no válida para documentos" }, { status: 400 });
   }
 
-  let parcial = (form.get("parcial") || null) as Parcial | null;
-  if (found.subsection.fixedParcial) parcial = found.subsection.fixedParcial;
-  if (found.subsection.supportsParcial && !parcial) {
-    return privateJson({ error: "Selecciona el parcial" }, { status: 400 });
-  }
-  if (parcial && !PARCIALES.includes(parcial)) {
-    return privateJson({ error: "Parcial no válido" }, { status: 400 });
-  }
+  const general = form.get("general") === "true";
+  const period = resolveDocumentPeriod(
+    found.subsection,
+    (form.get("parcial") || null) as Parcial | null,
+    general,
+  );
+  if (period.error) return privateJson({ error: period.error }, { status: 400 });
+  const parcial = period.parcial;
   const { portfolio, error: portfolioError } = await resolvePortfolio(
     auth,
     String(form.get("portafolio") ?? "") || null,
@@ -147,7 +158,7 @@ export async function POST(request: Request) {
     return privateJson({ error: "El contenido del archivo no coincide con su formato" }, { status: 400 });
   }
   const objectId = randomUUID().replace(/-/g, "").slice(0, 6);
-  const path = `${storageFolder(found.subsection, parcial)}/${safeFilename(titulo)}_${objectId}.${description.extension}`;
+  const path = `${storageFolder(found.subsection, parcial, period.general)}/${safeFilename(titulo)}_${objectId}.${description.extension}`;
   const uploaded = await auth.supabase.storage
     .from(BUCKET_DOCUMENTOS)
     .upload(path, bytes, { contentType: description.contentType, upsert: false });

@@ -17,7 +17,7 @@ import {
 import {
   BUCKET_DOCUMENTOS,
   findByCode,
-  PARCIALES,
+  resolveDocumentPeriod,
   sectionLabel,
   storageFolder,
   subsectionLabel,
@@ -29,6 +29,7 @@ type ConfirmRequest = {
   titulo?: string;
   subseccion?: string;
   parcial?: Parcial | null;
+  general?: boolean;
   portafolio?: string | null;
   nombre?: string;
   mime?: string;
@@ -58,12 +59,16 @@ export async function POST(request: Request) {
     return privateJson({ error: "La confirmación de carga no es válida" }, { status: 400 });
   }
 
-  let parcial = body.parcial ?? null;
-  if (found.subsection.fixedParcial) parcial = found.subsection.fixedParcial;
-  if ((found.subsection.supportsParcial && !parcial) || (parcial && !PARCIALES.includes(parcial))) {
+  const period = resolveDocumentPeriod(
+    found.subsection,
+    body.parcial,
+    body.general === true,
+  );
+  if (period.error) {
     await removeUpload(auth, path);
-    return privateJson({ error: "Parcial no válido" }, { status: 400 });
+    return privateJson({ error: period.error }, { status: 400 });
   }
+  const parcial = period.parcial;
 
   const { portfolio, error: portfolioError } = await resolvePortfolio(auth, body.portafolio);
   if (portfolioError) return internalServerError(portfolioError, portfolioError.message);
@@ -72,7 +77,11 @@ export async function POST(request: Request) {
     return privateJson({ error: "Portafolio no disponible" }, { status: 409 });
   }
 
-  let expectedFolder = storageFolder(found.subsection, parcial);
+  let expectedFolder = storageFolder(
+    found.subsection,
+    parcial,
+    period.general,
+  );
   let current: Documento | null = null;
   if (body.reemplazar_id) {
     const currentResult = await auth.supabase

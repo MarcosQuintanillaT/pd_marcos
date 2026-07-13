@@ -96,10 +96,15 @@ export function DocumentSearch({ role }: { role: Rol }) {
             {documents.map((document) => {
               const found = findByCode(document.subseccion_codigo ?? "");
               const href = found ? sectionHref(found.section, found.subsection) : "/portafolio";
+              const periodLabel = document.parcial
+                ? `${document.parcial} Parcial`
+                : found?.subsection.allowsGeneral
+                  ? "General/Anual"
+                  : "";
               return (
                 <Link key={document.id} href={href} className="group flex min-h-20 items-center gap-3 rounded-xl border border-[#e1ddd3] bg-white p-3 transition hover:border-[#c7b58e] hover:shadow-sm">
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f1eadf] text-[#a16b2d]"><FileSearch size={18} /></span>
-                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-[#294740]">{document.titulo}</strong><small className="mt-1 block truncate text-[#667773]">{document.subseccion}</small></span>
+                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-[#294740]">{document.titulo}</strong><small className="mt-1 block truncate text-[#667773]">{document.subseccion}{periodLabel ? ` · ${periodLabel}` : ""}</small></span>
                   <span className="rounded-full bg-[#edf0eb] px-2 py-1 text-[10px] font-bold text-[#4f6861]">{document.estado}</span>
                 </Link>
               );
