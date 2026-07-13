@@ -139,7 +139,7 @@ function LoginContent() {
           <div aria-hidden="true" className="login-stagger login-stagger-5 border-t border-white/10" />
           <div className="login-stagger login-stagger-6 grid grid-cols-3 gap-4 pt-6 text-sm text-white/65">
             <span className="login-feature flex items-center gap-2"><ShieldCheck size={17} className="login-feature-icon" /> Acceso seguro</span>
-            <span className="login-feature flex items-center gap-2"><FileCheck2 size={17} className="login-feature-icon" /> PDF organizados</span>
+            <span className="login-feature flex items-center gap-2"><FileCheck2 size={17} className="login-feature-icon" /> Archivos organizados</span>
             <span className="login-feature flex items-center gap-2"><CheckCircle2 size={17} className="login-feature-icon" /> Revisión simple</span>
           </div>
         </div>
@@ -198,7 +198,7 @@ function LoginContent() {
             <div className="mt-8 space-y-3">
               <button onClick={() => enterDemo("docente")} className="group flex w-full items-center gap-4 rounded-2xl border border-[#d8d5ca] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#c98b3c] hover:shadow-lg">
                 <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#123b35] text-[#e7b66d]"><GraduationCap size={23} /></span>
-                <span className="min-w-0 flex-1"><strong className="block text-[#173732]">Entrar como docente</strong><small className="mt-1 block text-[#74817d]">Subir, reemplazar y organizar PDF</small></span><ArrowRight size={18} className="text-[#ad8a57] transition group-hover:translate-x-1" />
+                <span className="min-w-0 flex-1"><strong className="block text-[#173732]">Entrar como docente</strong><small className="mt-1 block text-[#74817d]">Subir, reemplazar y organizar archivos</small></span><ArrowRight size={18} className="text-[#ad8a57] transition group-hover:translate-x-1" />
               </button>
               <button onClick={() => enterDemo("supervisor")} className="group flex w-full items-center gap-4 rounded-2xl border border-[#d8d5ca] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#4f8e7d] hover:shadow-lg">
                 <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#dfece7] text-[#1d5d51]"><ShieldCheck size={23} /></span>

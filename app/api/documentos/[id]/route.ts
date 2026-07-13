@@ -6,7 +6,8 @@ import {
   unauthorized,
   unconfigured,
 } from "@/lib/auth";
-import { safeFilename, validatePdf, withSignedUrls } from "@/lib/documents";
+import { safeFilename, withSignedUrls } from "@/lib/documents";
+import { describePortfolioFile, validatePortfolioFile } from "@/lib/file-types";
 import { BUCKET_DOCUMENTOS } from "@/lib/portfolio";
 import type { Documento, EstadoDocumento } from "@/lib/types";
 
@@ -59,17 +60,20 @@ export async function PUT(request: Request, context: Context) {
   const form = await request.formData();
   const file = form.get("archivo");
   if (!(file instanceof File)) return Response.json({ error: "Archivo requerido" }, { status: 400 });
-  const fileError = validatePdf(file);
+  const fileError = validatePortfolioFile(file);
   if (fileError) return Response.json({ error: fileError }, { status: 400 });
+  const fileDescription = describePortfolioFile(file);
+  if (!fileDescription)
+    return Response.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
 
   const { data: current } = await supabase.from("documentos").select("*").eq("id", id).single();
   if (!current) return Response.json({ error: "Documento no encontrado" }, { status: 404 });
   const titulo = String(form.get("titulo") ?? current.titulo).trim().slice(0, 160) || current.titulo;
   const folder = String(current.archivo_url).split("/").slice(0, -1).join("/");
   const objectId = randomUUID().replace(/-/g, "").slice(0, 6);
-  const path = `${folder}/${safeFilename(titulo)}_${objectId}.pdf`;
+  const path = `${folder}/${safeFilename(titulo)}_${objectId}.${fileDescription.extension}`;
   const uploaded = await supabase.storage.from(BUCKET_DOCUMENTOS).upload(path, await file.arrayBuffer(), {
-    contentType: "application/pdf",
+    contentType: fileDescription.contentType,
     upsert: false,
   });
   if (uploaded.error) return Response.json({ error: uploaded.error.message }, { status: 500 });

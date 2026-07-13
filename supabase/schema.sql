@@ -210,7 +210,7 @@ revoke all on table public.documentos from anon;
 grant select on table public.perfiles to authenticated;
 grant select, insert, update, delete on table public.documentos to authenticated;
 
--- Bucket privado, máximo 4 MB y exclusivamente PDF. El margen evita exceder
+-- Bucket privado, máximo 4 MB para PDF, HTML e imágenes. El margen evita exceder
 -- el límite de payload de 4.5 MB de Vercel Functions al usar multipart.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -218,7 +218,7 @@ values (
   'portafolio-documentos',
   false,
   4194304,
-  array['application/pdf']
+  array['application/pdf', 'text/html', 'image/*']
 )
 on conflict (id) do update set
   public = excluded.public,

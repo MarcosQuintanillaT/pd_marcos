@@ -337,7 +337,7 @@ export function Dashboard() {
             </strong>
             <p className="mt-1 text-xs leading-5 text-[#71807b]">
               {role === "docente"
-                ? "Entra a cualquier subsección para agregar o actualizar un PDF."
+                ? "Entra a cualquier subsección para agregar o actualizar un archivo."
                 : "Entra a una subsección para visualizar, comentar y cambiar el estado."}
             </p>
           </div>

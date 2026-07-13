@@ -6,7 +6,7 @@ Gestor documental para el portafolio oficial de un docente BTP. Está construido
 
 - Índice institucional completo de las secciones 1 a 8.
 - Dos roles: `docente` y `supervisor`.
-- Carga, reemplazo, visualización, descarga y eliminación de PDF.
+- Carga, reemplazo, visualización, descarga y eliminación de PDF, imágenes y HTML.
 - Revisión con estados `Pendiente`, `Revisado` y `Aprobado` y comentario del supervisor.
 - Filtros por parcial donde corresponde.
 - API routes de Next.js con sesión Supabase, RLS, validación de tipo MIME y tamaño.
@@ -56,8 +56,8 @@ supabase/schema.sql             esquema, RLS y Storage
 - RLS decide qué filas puede operar cada rol y `trg_check_supervisor_update` limita las columnas del supervisor.
 - `on_auth_user_created` crea perfiles y `on_auth_user_updated` sincroniza metadata administrativa; el rol privilegiado solo se acepta desde `app_metadata` y el valor por defecto es `supervisor`.
 - El bucket es privado; las API generan enlaces firmados de corta duración para visualizar o descargar.
-- Los enlaces del visor y descarga vencen a los 600 segundos y cada objeto se guarda como `slug-del-titulo_a1b2c3.pdf`.
-- El límite predeterminado es 4 MB por PDF para respetar el máximo de 4.5 MB por petición de Vercel Functions; comprime los PDF escaneados antes de subirlos.
+- Los enlaces del visor y descarga vencen a los 600 segundos y cada objeto conserva su extensión: `slug-del-titulo_a1b2c3.ext`.
+- El límite es 4 MB por archivo para mantener las cargas compatibles con Vercel Functions. Las imágenes y los PDF escaneados deben optimizarse si exceden ese tamaño.
 - No existe formulario ni llamada pública a `signUp`; desactiva además **Allow new users to sign up / Enable email signups** en Supabase.
 
 ## Despliegue en Vercel Hobby
@@ -79,21 +79,20 @@ supabase/schema.sql             esquema, RLS y Storage
 | `NEXT_PUBLIC_DOCENTE_NOMBRE` | Pública | Requerida para personalización |
 | `NEXT_PUBLIC_DOCENTE_AREA` | Pública | Requerida para personalización |
 | `NEXT_PUBLIC_DOCENTE_JORNADA` | Pública | Requerida para personalización |
-| `MAX_PDF_SIZE_MB` | Servidor | Recomendada: `4` |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Solo servidor** | Opcional; no se usa en el CRUD normal |
 | `NEXT_PUBLIC_DEMO_MODE` | Pública | Ausente o `false`; producción la ignora |
 
 ## Uso
 
-- El docente entra, abre una subsección y usa **Subir PDF**. Puede reemplazar o eliminar sus documentos.
-- El supervisor abre el mismo índice, visualiza o descarga el PDF y guarda el estado/comentario.
+- El docente entra, abre una subsección y usa **Subir nuevo archivo**. Puede cargar PDF, imágenes o HTML, además de reemplazar o eliminar documentos.
+- El supervisor abre el mismo índice, visualiza o descarga el archivo y guarda el estado/comentario.
 - Para documentos segmentados, selecciona el parcial antes de subir o filtrar.
 - En el login, **¿Olvidaste tu contraseña?** envía un enlace a `/reset-password`; el mensaje no revela si el correo existe.
 
 ## Verificación end-to-end de entrega
 
-1. Docente real: inicia sesión, abre una subsección, sube un PDF y confirma el objeto privado `slug-del-titulo_xxxxxx.pdf` en Storage y el registro en `public.documentos`.
-2. Supervisor real: inicia sesión, confirma que puede ver el PDF embebido y descargarlo mediante enlaces firmados.
+1. Docente real: inicia sesión, abre una subsección y prueba al menos un PDF, una imagen y un HTML; confirma los objetos privados `slug-del-titulo_xxxxxx.ext` en Storage y sus registros en `public.documentos`.
+2. Supervisor real: inicia sesión, confirma que puede previsualizar los formatos compatibles y descargarlos mediante enlaces firmados.
 3. Supervisor: cambia `estado` y `comentario_supervisor`; confirma ambos en SQL Editor. Con su token intenta actualizar `titulo` o `archivo_url` directamente y verifica el error `42501` del trigger.
 4. Cierra sesión con ambos roles y visita `/portafolio`: debe redirigir a `/login`.
 5. Desde el login solicita recuperación, abre el correo, entra a `/reset-password`, guarda una contraseña nueva y confirma que la sesión anterior queda cerrada.

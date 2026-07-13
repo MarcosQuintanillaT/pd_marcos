@@ -6,7 +6,12 @@ import {
   unauthorized,
   unconfigured,
 } from "@/lib/auth";
-import { MAX_PDF_BYTES, safeFilename, validatePdf, withSignedUrls } from "@/lib/documents";
+import { safeFilename, withSignedUrls } from "@/lib/documents";
+import {
+  describePortfolioFile,
+  MAX_CLIENT_FILE_BYTES,
+  validatePortfolioFile,
+} from "@/lib/file-types";
 import {
   BUCKET_DOCUMENTOS,
   findByCode,
@@ -65,8 +70,11 @@ export async function POST(request: Request) {
   const code = String(form.get("subseccion") ?? "");
   const found = findByCode(code);
   if (!(file instanceof File)) return Response.json({ error: "Archivo requerido" }, { status: 400 });
-  const fileError = validatePdf(file);
+  const fileError = validatePortfolioFile(file);
   if (fileError) return Response.json({ error: fileError }, { status: 400 });
+  const fileDescription = describePortfolioFile(file);
+  if (!fileDescription)
+    return Response.json({ error: "Tipo de archivo no permitido" }, { status: 400 });
   if (!titulo || titulo.length > 160)
     return Response.json({ error: "El título es obligatorio y admite hasta 160 caracteres" }, { status: 400 });
   if (!found || found.subsection.children?.length)
@@ -80,16 +88,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Parcial no válido" }, { status: 400 });
 
   const objectId = randomUUID().replace(/-/g, "").slice(0, 6);
-  const path = `${storageFolder(found.subsection, parcial)}/${safeFilename(titulo)}_${objectId}.pdf`;
+  const path = `${storageFolder(found.subsection, parcial)}/${safeFilename(titulo)}_${objectId}.${fileDescription.extension}`;
   const bytes = await file.arrayBuffer();
-  if (bytes.byteLength > MAX_PDF_BYTES)
+  if (bytes.byteLength > MAX_CLIENT_FILE_BYTES)
     return Response.json({ error: "Archivo demasiado grande" }, { status: 400 });
 
   const uploaded = await supabase.storage
     .from(BUCKET_DOCUMENTOS)
-    .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+    .upload(path, bytes, { contentType: fileDescription.contentType, upsert: false });
   if (uploaded.error)
-    return Response.json({ error: `No se pudo subir el PDF: ${uploaded.error.message}` }, { status: 500 });
+    return Response.json({ error: `No se pudo subir el archivo: ${uploaded.error.message}` }, { status: 500 });
 
   const { data, error } = await supabase
     .from("documentos")
