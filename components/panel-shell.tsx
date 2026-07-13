@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Menu, PanelLeftClose, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Menu, PanelLeftClose, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { PageLoader } from "@/components/page-loader";
 import { SECTION_ICONS } from "@/components/portfolio-icons";
@@ -65,7 +65,10 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
       <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-5" aria-label="Índice oficial del portafolio">
         <Link href="/portafolio" aria-current={pathname === "/portafolio" ? "page" : undefined} className={`mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${pathname === "/portafolio" ? "bg-transparent text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}>
-          <span className="grid size-7 place-items-center rounded-lg bg-[#c98b3c]/20 text-xs font-black text-[#e8bb79]">⌂</span>Resumen general
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#c98b3c]/20 text-[#e8bb79]">
+            <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          Resumen general
         </Link>
         {role === "docente" && <Link href="/portafolio/papelera" onClick={() => setOpen(false)} aria-current={pathname === "/portafolio/papelera" ? "page" : undefined} className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition ${pathname === "/portafolio/papelera" ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/8 hover:text-white"}`}><span className="grid size-7 place-items-center rounded-lg bg-white/7"><Trash2 size={14} /></span>Papelera</Link>}
         <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[.18em] text-white/60">Índice del portafolio</p>
