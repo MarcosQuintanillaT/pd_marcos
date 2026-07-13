@@ -68,7 +68,90 @@ textarea:focus-visible {
 }
 .animate-enter { animation: enter .35s ease-out both; }
 
+@keyframes login-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-stagger {
+  opacity: 0;
+  animation: login-stagger-in 360ms ease-out both;
+}
+.login-stagger-1 { animation-delay: 40ms; }
+.login-stagger-2 { animation-delay: 110ms; }
+.login-stagger-3 { animation-delay: 180ms; }
+.login-stagger-4 { animation-delay: 250ms; }
+.login-stagger-5 { animation-delay: 320ms; }
+.login-stagger-6 { animation-delay: 390ms; }
+
+@keyframes login-ambient-pulse {
+  from { opacity: .4; }
+  to { opacity: .6; }
+}
+
+.login-ambient {
+  opacity: .5;
+  animation: login-ambient-pulse 5s ease-in-out infinite alternate;
+}
+.login-ambient-offset { animation-delay: -2.5s; }
+
+.login-input {
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.login-input:focus-visible {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201, 139, 60, .18);
+}
+
+.login-feature { transition: transform 150ms ease-out; }
+.login-feature-icon {
+  color: rgba(255, 255, 255, .5);
+  transition: color 150ms ease-out;
+}
+.login-feature:hover { transform: translateY(-2px); }
+.login-feature:hover .login-feature-icon { color: var(--gold); }
+
+.login-submit {
+  transition: filter 140ms ease-out, transform 140ms ease-out;
+}
+.login-submit:hover:not(:disabled) { filter: brightness(.88); }
+.login-submit:active:not(:disabled) { transform: scale(.98); }
+
+.login-forgot-link { transition: color 150ms ease-out; }
+.login-forgot-link:hover:not(:disabled) {
+  color: var(--gold);
+  text-decoration-line: underline;
+}
+
+@keyframes login-welcome-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-welcome-badge {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: fit-content;
+  margin-inline: auto;
+  border: 1px solid rgba(201, 139, 60, .42);
+  border-radius: 999px;
+  background: var(--gold-soft);
+  padding: .55rem 1.1rem;
+  color: #8c5b1f;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  animation: login-welcome-in 250ms ease-out 70ms both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+  .login-stagger { opacity: 1 !important; transform: none !important; }
+  .login-feature:hover,
+  .login-submit:active { transform: none !important; }
+  .login-submit:hover { filter: none !important; }
 }
 

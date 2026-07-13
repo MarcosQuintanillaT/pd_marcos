@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SectionView } from "@/components/section-view";
-import { findSection, findSubsection } from "@/lib/portfolio";
+import { findSection, findSubsection, sectionHref } from "@/lib/portfolio";
 
 type Props = { params: Promise<{ ruta: string[] }> };
 
@@ -19,6 +19,7 @@ export default async function SectionPage({ params }: Props) {
   if (!section) notFound();
   const subsection = ruta[1] ? findSubsection(section, ruta[1]) : undefined;
   if (ruta[1] && !subsection) notFound();
+  if (section.code === "1" && subsection) redirect(sectionHref(section));
   return <SectionView section={section} subsection={subsection} />;
 }
 
