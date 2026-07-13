@@ -122,7 +122,17 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           <span className="min-w-0 flex-1"><strong className="block truncate text-xs">{perfil?.nombre || perfil?.email}</strong><small className="capitalize text-white/45">{role}</small></span>
           {demoMode && <span title="Modo demostración" className="status-dot size-2 rounded-full bg-[#e7b66d]" />}
         </div>
-        <button onClick={signOut} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-xs font-bold text-white/65 hover:bg-white/8 hover:text-white"><LogOut size={15} />Cerrar sesión</button>
+        <div className="border-t border-white/8 pt-3">
+          <button
+            onClick={signOut}
+            className="group flex min-h-11 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-left text-xs font-semibold text-white/65 transition duration-150 hover:border-[#e7b66d]/35 hover:bg-white/[0.07] hover:text-[#f5d8aa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e7b66d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#123b35] active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/[0.06] text-white/55 transition duration-150 group-hover:bg-[#e7b66d]/15 group-hover:text-[#e7b66d] motion-reduce:transition-none">
+              <LogOut size={15} strokeWidth={1.8} />
+            </span>
+            <span className="flex-1">Cerrar sesión</span>
+          </button>
+        </div>
       </div>
     </aside>
   );
