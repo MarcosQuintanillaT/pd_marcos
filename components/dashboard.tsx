@@ -208,7 +208,7 @@ export function Dashboard() {
         ))}
       </section>
 
-      <DocumentSearch role={role!} />
+      <DocumentSearch key={`${role}-${selectedId ?? "sin-portafolio"}`} role={role!} />
 
       <section className="mt-9">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow mb-2">Índice oficial</p><h2 className="text-2xl font-semibold tracking-[-.025em] text-[#173732]">Explora las 8 secciones</h2></div><div className="flex flex-wrap gap-2">{role === "docente" && <Link href="/portafolio/papelera" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#d8d5ca] bg-[#fffdf8] px-4 text-xs font-bold text-[#536a64]"><Trash2 size={15} />Papelera</Link>}{summary.total > 0 && <a href={withPortfolioQuery("/api/exportar", selectedId)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#123b35] px-4 text-xs font-bold text-white"><Download size={15} />Exportar ZIP</a>}</div></div>
